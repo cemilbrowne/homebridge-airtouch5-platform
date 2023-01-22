@@ -239,30 +239,30 @@ export class AirtouchAPI {
   }
 
   // send command to change AC mode (OFF/HEATING/COOLING/AUTO)
-  acSetCurrentHeatingCoolingState(unit_number, state) {
+  acSetTargetHeatingCoolingState(unit_number, state) {
     let target: any;
     switch (state) {
-      case 0: // OFF
+      case MAGIC.AC_TARGET_STATES.OFF: // OFF
         target = {
           ac_unit_number: unit_number,
           ac_power_state: MAGIC.AC_POWER_STATES.OFF,
         };
         break;
-      case 1: // HEAT
+      case MAGIC.AC_TARGET_STATES.HEAT: // HEAT
         target = {
           ac_unit_number: unit_number,
           ac_power_state: MAGIC.AC_POWER_STATES.ON,
           ac_mode: MAGIC.AC_MODES.HEAT,
         };
         break;
-      case 2: // COOL
+      case MAGIC.AC_TARGET_STATES.COOL: // COOL
         target = {
           ac_unit_number: unit_number,
           ac_power_state: MAGIC.AC_POWER_STATES.ON,
           ac_mode: MAGIC.AC_MODES.COOL,
         };
         break;
-      default: // everything else is AUTO
+      case MAGIC.AC_TARGET_STATES.AUTO: // everything else is AUTO
         target = {
           ac_unit_number: unit_number,
           ac_power_state: MAGIC.AC_POWER_STATES.ON,
@@ -270,20 +270,12 @@ export class AirtouchAPI {
         };
     }
     this.log.debug('API | Setting AC heating/cooling state to: ' + JSON.stringify(target));
-    const data = this.encode_ac_control(target);
-    // this.send(MAGIC.SUBTYPE_AC_CTRL, data);
+    const data: Buffer = this.encode_ac_control(target);
+    const to_send = Buffer.from([0x00, 0x04, 0x00, 0x01, ...data]);
+    const message = this.assemble_standard_message(MAGIC.SUBTYPE_AC_CTRL, to_send);
+    this.send(message);
   }
 
-  // send command to change AC target temperature
-  acSetTargetTemperature(unit_number, temp) {
-    const target = {
-      ac_unit_number: unit_number,
-      ac_target_value: temp,
-    };
-    this.log.debug('API | Setting AC target temperature ' + JSON.stringify(target));
-    const data = this.encode_ac_control(target);
-    // this.send(MAGIC.MSGTYPE_AC_CTRL, data);
-  }
 
   // send command to change AC fan speed
   acSetFanSpeed(unit_number, speed) {
@@ -449,12 +441,11 @@ export class AirtouchAPI {
   }
 
   // encode a message for AC command
-  encode_zone_control(group) {
-    const byte1 = this.isNull(group.zone_number, MAGIC.ZONE_NUMBER_DEFAULT);
-    let byte2 = this.isNull(group.zone_power_state, MAGIC.ZONE_POWER_STATES.KEEP);
-    byte2 = byte2 | ((this.isNull(group.zone_control_type, MAGIC.ZONE_CONTROL_TYPES.KEEP)) << 3);
-    byte2 = byte2 | ((this.isNull(group.zone_target_type, MAGIC.ZONE_TARGET_TYPES.KEEP)) << 5);
-    const byte3 = group.zone_target || 0;
+  encode_zone_control(zone):Buffer {
+    const byte1 = this.isNull(zone.zone_number, MAGIC.ZONE_NUMBER_DEFAULT);
+    let byte2 = this.isNull(zone.zone_power_state, MAGIC.ZONE_POWER_STATES.KEEP);
+    byte2 = byte2 | ((this.isNull(zone.zone_target_type, MAGIC.ZONE_TARGET_TYPES.KEEP)) << 5);
+    const byte3 = zone.zone_target || 0;
     const byte4 = 0;
     return Buffer.from([byte1, byte2, byte3, byte4]);
   }
@@ -466,43 +457,24 @@ export class AirtouchAPI {
       zone_power_state: active ? MAGIC.ZONE_POWER_STATES.ON : MAGIC.ZONE_POWER_STATES.OFF,
     };
     this.log.debug('API | Setting zone state: ' + JSON.stringify(target));
-    const data = this.encode_zone_control(target);
-    // this.send(MAGIC.MSGTYPE_GRP_CTRL, data);
-  }
-
-  // send command to set damper position
-  zoneSetDamperPosition(zone_number, position) {
-    const target = {
-      zone_number: zone_number,
-      zone_target_type: MAGIC.ZONE_TARGET_TYPES.DAMPER,
-      zone_target: position,
-    };
-    this.log.debug('API | Setting damper position: ' + JSON.stringify(target));
-    const data = this.encode_zone_control(target);
-    // this.send(MAGIC.MSGTYPE_GRP_CTRL, data);
-  }
-
-  // send command to set control type (0 = DAMPER, 1 = TEMPERATURE)
-  zoneSetControlType(zone_number, type) {
-    const target = {
-      zone_number: zone_number,
-      zone_control_type: MAGIC.ZONE_CONTROL_TYPES.DAMPER + type,
-    };
-    this.log.debug('API | Setting control type: ' + JSON.stringify(target));
-    const data = this.encode_zone_control(target);
-    // this.send(MAGIC.MSGTYPE_GRP_CTRL, data);
+    const data: Buffer = this.encode_zone_control(target);
+    const to_send = Buffer.from([0x00, 0x04, 0x00, 0x01, ...data]);
+    const message = this.assemble_standard_message(MAGIC.SUBTYPE_ZONE_CTRL, to_send);
+    this.send(message);
   }
 
   // send command to set target temperature
-  zoneSetTargetTemperature(zone_number, temp) {
+  zoneSetTargetTemperature(zone_number: number, temp: number) {
     const target = {
       zone_number: zone_number,
       zone_target_type: MAGIC.ZONE_TARGET_TYPES.TEMPERATURE,
-      zone_target: temp,
+      zone_target: temp*10-100,
     };
     this.log.debug('API | Setting target temperature: ' + JSON.stringify(target));
-    const data = this.encode_zone_control(target);
-    // this.send(MAGIC.MSGTYPE_GRP_CTRL, data);
+    const data: Buffer = this.encode_zone_control(target);
+    const to_send = Buffer.from([0x00, 0x04, 0x00, 0x01, ...data]);
+    const message = this.assemble_standard_message(MAGIC.SUBTYPE_ZONE_CTRL, to_send);
+    this.send(message);
   }
 
   // send command to get AC status

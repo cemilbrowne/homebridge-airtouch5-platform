@@ -82,6 +82,13 @@ export class MAGIC {
     TEMPERATURE: 3,
   };
 
+  static AC_TARGET_STATES = {
+    OFF: 0,
+    HEAT: 1,
+    COOL: 2,
+    AUTO: 3,
+  };
+
   static ZONE_TARGET_TYPES = {
     KEEP: 0,
     DECREMENT: 2,
@@ -95,7 +102,8 @@ export class MAGIC {
 
   static ATTR_NAME = 'name';
   static ATTR_ZONE_POWER = 'zone_power_state';
-  static ATTR_CURRENT_HEATCOOL = 'ac_power_state';
+  static ATTR_CURRENT_HEATCOOL = 'zone_current_heatcool';
+  static ATTR_TARGET_HEATCOOL = 'zone_target_heatcool';
   static ATTR_CURRENT_TEMP = 'zone_current_temp';
   static ATTR_TARGET_TEMP = 'zone_target_temp';
 }

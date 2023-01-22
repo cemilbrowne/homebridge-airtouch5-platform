@@ -8,6 +8,9 @@ export class AirTouchZoneAccessory {
   private service: Service;
   AirtouchId;
   ZoneNumber;
+  minTemp: number;
+  maxTemp: number;
+  step: number;
   constructor(
     private readonly platform: AirtouchPlatform,
     private readonly accessory: PlatformAccessory,
@@ -16,8 +19,23 @@ export class AirTouchZoneAccessory {
   ) {
     this.AirtouchId = AirtouchId;
     this.ZoneNumber = ZoneNumber;
+    this.minTemp = 15;
+    this.maxTemp = 30;
+    this.step = 1;
 
-    this.platform.log.debug('Creating a platform accessory');
+    this.accessory.getService(this.platform.Service.AccessoryInformation)
+      ?.setCharacteristic(
+        this.platform.Characteristic.Manufacturer,
+        'AirTouch',
+      )
+      .setCharacteristic(
+        this.platform.Characteristic.Model,
+        'AirTouch 5',
+      )
+      .setCharacteristic(
+        this.platform.Characteristic.SerialNumber,
+        this.AirtouchId || 'Unknown',
+      );
 
     this.service = this.accessory.getService(this.platform.Service.Thermostat) ||
                     this.accessory.addService(this.platform.Service.Thermostat);
@@ -33,7 +51,14 @@ export class AirTouchZoneAccessory {
       .onGet(this.handleCurrentTemperatureGet.bind(this));
 
     this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature)
-      .onGet(this.handleTargetTemperatureGet.bind(this));
+      .onGet(this.handleTargetTemperatureGet.bind(this))
+      .onSet(this.handleTargetTemperatureSet.bind(this))
+      .setProps({
+        minValue: this.minTemp,
+        maxValue: this.maxTemp,
+        minStep: this.step,
+      });
+
 
     this.service.getCharacteristic(this.platform.Characteristic.Name)
       .onGet(this.handleNameGet.bind(this));
@@ -42,11 +67,27 @@ export class AirTouchZoneAccessory {
 
   }
 
+  // check if value is undefined, and replace it with a default value
+  isNull(val, nullVal) {
+    return val === undefined ? nullVal : val;
+  }
+
+  updateAll() {
+    this.service.getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState)
+      .updateValue(this.handleTargetHeatingCoolingStateGet());
+    this.service.getCharacteristic(this.platform.Characteristic.CurrentHeatingCoolingState)
+      .updateValue(this.handleCurrentHeatingCoolingStateGet());
+    this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature)
+      .updateValue(this.handleCurrentTemperatureGet());
+    this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature)
+      .updateValue(this.handleTargetTemperatureGet());
+  }
+
   /**
    * Handle requests to get the current value of the "Name" characteristic
    */
   handleNameGet() {
-    const name = this.platform.getZoneAttribute(this.AirtouchId, this.ZoneNumber, MAGIC.ATTR_NAME);
+    const name = this.isNull(this.platform.getZoneAttribute(this.AirtouchId, this.ZoneNumber, MAGIC.ATTR_NAME), 'Default Name');
     return name;
   }
 
@@ -66,7 +107,7 @@ export class AirTouchZoneAccessory {
    */
   handleTargetHeatingCoolingStateGet() {
 
-    const currentValue = this.platform.getZoneAttribute(this.AirtouchId, this.ZoneNumber, MAGIC.ATTR_CURRENT_HEATCOOL);
+    const currentValue = this.platform.getZoneAttribute(this.AirtouchId, this.ZoneNumber, MAGIC.ATTR_TARGET_HEATCOOL);
 
     return currentValue;
   }
@@ -75,7 +116,7 @@ export class AirTouchZoneAccessory {
    * Handle requests to set the "Target Heater-Cooler State" characteristic
    */
   handleTargetHeatingCoolingStateSet(value) {
-    this.platform.log.debug('Triggered SET TargetHeaterCoolerState:', value);
+    this.platform.setZoneAttribute(this.AirtouchId, this.ZoneNumber, MAGIC.ATTR_TARGET_HEATCOOL, value);
   }
 
   /**
@@ -97,4 +138,10 @@ export class AirTouchZoneAccessory {
     return currentValue;
   }
 
+  /**
+   * Handle requests to get the current value of the "Current Temperature" characteristic
+   */
+  handleTargetTemperatureSet(value) {
+    this.platform.setZoneAttribute(this.AirtouchId, this.ZoneNumber, MAGIC.ATTR_TARGET_TEMP, value);
+  }
 }

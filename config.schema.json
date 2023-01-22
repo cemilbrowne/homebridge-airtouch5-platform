@@ -5,11 +5,18 @@
   "schema": {
     "type": "object",
     "properties": {
-      "name": {
-        "title": "Name",
-        "type": "string",
-        "required": true,
-        "default": "Example Dynamic Platform"
+      "name": { 
+          "type": "string",
+          "required": false,
+          "default": "Airtouch 5",
+          "title": "Name"
+          
+      },
+      "units": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
       }
     }
   }
