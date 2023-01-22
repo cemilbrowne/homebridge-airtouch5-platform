@@ -254,12 +254,12 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
       return;
     }
     const zone = result.zones[zone_number];
+    const power_state = parseInt(zone.zone_power_state);
     switch(attribute) {
       case MAGIC.ATTR_NAME:
         return zone.zone_name;
         break;
       case MAGIC.ATTR_ZONE_POWER:
-        const power_state = parseInt(zone.zone_power_state);
         switch(parseInt(zone.zone_power_state)) {
           case 0:
             return this.api.hap.Characteristic.Active.INACTIVE;

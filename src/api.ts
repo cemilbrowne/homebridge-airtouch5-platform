@@ -2,9 +2,7 @@ import { MAGIC } from './magic';
 import { Logger } from 'homebridge';
 import * as net from 'net';
 import * as dgram from 'dgram';
-import { AirtouchPlatform } from './platform';
 import { EventEmitter } from 'events';
-import { count } from 'console';
 
 export interface AcAbility {
   ac_unit_number: string;
