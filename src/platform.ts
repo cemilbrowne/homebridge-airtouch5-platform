@@ -1,100 +1,17 @@
-import { API, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, Service, Characteristic } from 'homebridge';
+import { API, DynamicPlatformPlugin, Logger, PlatformConfig, Service, Characteristic } from 'homebridge';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
-import { AirtouchAPI, AcAbility, AcStatus, ZoneStatus } from './api';
-import { AirTouchZoneAccessory } from './platformAccessory';
+import { AirtouchAPI, ZoneStatus } from './api';
+import { AirTouchZoneAccessory } from './platformZoneAccessory';
 import { EventEmitter } from 'events';
 import { MAGIC } from './magic';
+import { Airtouch5Wrapper, AC } from './airTouchWrapper';
 
 
-interface AC {
-  ac_number: number;
-  ac_ability: AcAbility;
-  ac_status?: AcStatus;
-}
-
-class Airtouch5Wrapper {
-  //
-  // Helper class for wrapping an Airtouch5.  Maintains the mapping of controller -> ac -> zones.
-  //
-
-  ip: string;
-  consoleId: string;
-  AirtouchId: string;
-  deviceName: string;
-  api: AirtouchAPI;
-  acs: Array<AC>;
-  log: Logger;
-  emitter: EventEmitter;
-  zones: Array<ZoneStatus>;
-
-  zoneMapping: Array<number>;
-  accessories: Array<AirTouchZoneAccessory>;
-
-  constructor(ip: string, consoleId: string, AirtouchId: string, deviceName: string, log: Logger, emitter: EventEmitter) {
-    this.ip = ip;
-    this.log = log;
-    this.consoleId = consoleId;
-    this.AirtouchId = AirtouchId;
-    this.deviceName = deviceName;
-    this.emitter = emitter;
-    this.api = new AirtouchAPI(ip, consoleId, AirtouchId, deviceName, log, emitter);
-    this.api.connect();
-    this.acs = new Array<AC>();
-    this.zones = new Array<ZoneStatus>(16);
-    this.zoneMapping = Array(16).fill(-1);
-    this.accessories = new Array<AirTouchZoneAccessory>(16);
-  }
-
-  AddAcAbility(ac_ability: AcAbility) {
-    const new_ac_number = +ac_ability.ac_unit_number;
-    const result = this.acs.find(({ ac_number }) => ac_number === new_ac_number);
-    if(result === undefined) {
-      this.acs.push({
-        ac_number: new_ac_number,
-        ac_ability: ac_ability,
-      });
-      const zonestart: number = +ac_ability.ac_start_zone;
-      const count_zones:number = +ac_ability.ac_zone_count;
-      for (let i:number = zonestart; i<(zonestart+count_zones); i++) {
-        this.zoneMapping[i] = new_ac_number;
-      }
-    } else {
-      this.log.debug('Adding AC Capability, but AC Number was already there: ', new_ac_number);
-    }
-  }
-
-  AddUpdateZoneStatus(zone_status: ZoneStatus) {
-    const zone_number = parseInt(zone_status.zone_number);
-    this.zones[zone_number] = zone_status;
-    this.log.debug('Updated zone: '+zone_number);
-  }
-
-  AddZoneName(in_zone_number, zone_name) {
-    const zone_number = +in_zone_number;
-    if(this.zones[zone_number].zone_name == null) {
-      this.zones[zone_number].zone_name = zone_name;
-      this.emitter.emit('zone_added', zone_number, this.AirtouchId);
-    } else {
-      this.zones[zone_number].zone_name = zone_name;
-    }
-    this.log.debug('Updated zone name: '+zone_name);
-  }
-
-  AddUpdateAcStatus(ac_status: AcStatus) {
-    const new_ac_number = +ac_status.ac_unit_number;
-    const result = this.acs.find(({ ac_number }) => ac_number === new_ac_number);
-    if(result === undefined) {
-      this.log.debug('Error condition adding AC Status - no existing AC with abilities with num: ', new_ac_number);
-    } else {
-      result.ac_status = ac_status;
-    }
-  }
-}
 
 export class AirtouchPlatform implements DynamicPlatformPlugin {
   public readonly Service: typeof Service = this.api.hap.Service;
   public readonly Characteristic: typeof Characteristic = this.api.hap.Characteristic;
-  public readonly accessories: string[] = [];
+  // public readonly zoneAccessories: string[] = [];
   public emitter: EventEmitter;
   airtouch_devices: Array<Airtouch5Wrapper>;
   //
@@ -172,7 +89,7 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
   addAirtouchDevice(in_ip: string, consoleId: string, in_AirtouchId: string, deviceName: string) {
     const result = this.airtouch_devices.find(({ AirtouchId }) => AirtouchId === in_AirtouchId);
     if(result === undefined) {
-      const newAirtouch = new Airtouch5Wrapper(in_ip, consoleId, in_AirtouchId, deviceName, this.log, this.emitter);
+      const newAirtouch = new Airtouch5Wrapper(in_ip, consoleId, in_AirtouchId, deviceName, this.log, this.emitter, this);
       this.airtouch_devices.push(newAirtouch);
       this.log.debug('Did not find this ip, so added it: ', in_ip);
     } else {
@@ -196,8 +113,8 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
       this.log.debug('Error condition in Zone Status, no AirTouch ID found', in_AirtouchId);
     } else {
       result.AddUpdateZoneStatus(zone_status);
-      if(result.accessories[zone_status.zone_number]) {
-        result.accessories[zone_status.zone_number].updateAll();
+      if(result.zoneAccessories[zone_status.zone_number]) {
+        result.zoneAccessories[zone_status.zone_number].updateAll();
       }
     }
   }
@@ -229,7 +146,7 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
     const zone = result.zones[zone_number];
 
     const uuid = this.api.hap.uuid.generate(''+result.AirtouchId+zone.zone_number);
-    if(this.accessories.find(element => element === uuid)) {
+    if(result.zoneAccessories[zone.zone_number]) {
       this.log.debug('Tried to add existing UUID, backing out');
       return;
     }
@@ -241,10 +158,130 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
 
     // create the accessory handler for the newly create accessory
     // this is imported from `platformAccessory.ts`
-    result.accessories[zone.zone_number] = new AirTouchZoneAccessory(this, accessory, in_AirtouchId, zone_number);
+    result.zoneAccessories[zone.zone_number] = new AirTouchZoneAccessory(this, accessory, in_AirtouchId, zone_number);
 
     // link the accessory to your platform
     this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+  }
+
+  getACAttribute(in_AirtouchId, in_ac_number:number, attribute: string): any {
+    const result = this.airtouch_devices.find(({ AirtouchId }) => AirtouchId === in_AirtouchId);
+    if(result === undefined) {
+      this.log.debug('Error getting the airtouch device in getzoneattribute:', in_AirtouchId);
+      return;
+    }
+    const ac = result.acs.find(({ ac_number }) => ac_number === in_ac_number);
+    switch(attribute) {
+      case MAGIC.ATTR_NAME:
+        return ac!.ac_ability.ac_name;
+        break;
+      case MAGIC.ATTR_AC_ACTIVE:
+        switch(parseInt(ac!.ac_status!.ac_power_state)) {
+          case 0:
+            return this.api.hap.Characteristic.Active.INACTIVE;
+            break;
+          case 1:
+            return this.api.hap.Characteristic.Active.ACTIVE;
+            break;
+          case 2:
+            return this.api.hap.Characteristic.Active.INACTIVE;
+            break;
+          case 3:
+            return this.api.hap.Characteristic.Active.ACTIVE;
+            break;
+          default:
+            return this.api.hap.Characteristic.Active.INACTIVE;
+            break;
+        }
+      case MAGIC.ATTR_CURRENT_HEATCOOL:
+        return this.getCurrentACHeatingCoolingState(ac!);
+        break;
+      case MAGIC.ATTR_TARGET_HEATCOOL:
+        return this.getTargetACHeatingCoolingState(ac!);
+        break;
+      case MAGIC.ATTR_CURRENT_TEMP:
+        return +ac!.ac_status!.ac_temp;
+        break;
+    }
+  }
+
+  getCurrentACHeatingCoolingState(ac: AC) {
+    const ac_mode = +ac.ac_status!.ac_mode;
+    const power_state = parseInt(ac.ac_status!.ac_power_state);
+    if(power_state === 0){
+      this.log.debug('Returning inactive status for state of AC');
+      return this.api.hap.Characteristic.CurrentHeaterCoolerState.INACTIVE;
+    } else {
+      const ac_target = +ac.ac_status!.ac_target;
+      const ac_current = +ac.ac_status!.ac_temp;
+      switch(ac_mode) {
+        case 0:
+          this.log.debug('AC is set to AUTO mode and zone is on.  Interpreting response. target: '+ac_target+'. current: '+ac_current);
+          if(ac_target < ac_current) {
+            return this.api.hap.Characteristic.CurrentHeaterCoolerState.COOLING;
+          } else {
+            return this.api.hap.Characteristic.CurrentHeaterCoolerState.HEATING;
+          }
+          break;
+        case 1:
+          return this.api.hap.Characteristic.CurrentHeaterCoolerState.HEATING;
+          break;
+        case 2:
+          this.log.info('AC is set to DRY mode.  This is currently unhandled.  Reporting it as cool instead. ');
+          return this.api.hap.Characteristic.CurrentHeaterCoolerState.COOLING;
+          break;
+        case 3:
+          this.log.info('AC is set to FAN mode.  This is currently unhandled.  Reporting it as cool instead. ');
+          return this.api.hap.Characteristic.CurrentHeaterCoolerState.COOLING;
+          break;
+        case 4:
+          return this.api.hap.Characteristic.CurrentHeaterCoolerState.COOLING;
+          break;
+        case 8:
+          return this.api.hap.Characteristic.CurrentHeaterCoolerState.HEATING;
+          break;
+        case 9:
+          return this.api.hap.Characteristic.CurrentHeaterCoolerState.COOLING;
+          break;
+        default:
+          this.log.info('Unhandled ac_mode in getCurrentHeatingCoolingState. Returning off as fail safe.');
+          return this.api.hap.Characteristic.CurrentHeaterCoolerState.IDLE;
+          break;
+      }
+    }
+  }
+
+  getTargetACHeatingCoolingState(ac: AC) {
+    const ac_mode = +ac.ac_status!.ac_mode;
+    switch(ac_mode) {
+      case 0:
+        return this.api.hap.Characteristic.TargetHeaterCoolerState.AUTO;
+        break;
+      case 1:
+        return this.api.hap.Characteristic.TargetHeaterCoolerState.HEAT;
+        break;
+      case 2:
+        this.log.info('AC is set to DRY mode.  This is currently unhandled.  Reporting it as cool instead. ');
+        return this.api.hap.Characteristic.TargetHeaterCoolerState.COOL;
+        break;
+      case 3:
+        this.log.info('AC is set to FAN mode.  This is currently unhandled.  Reporting it as cool instead. ');
+        return this.api.hap.Characteristic.TargetHeaterCoolerState.COOL;
+        break;
+      case 4:
+        return this.api.hap.Characteristic.TargetHeaterCoolerState.COOL;
+        break;
+      case 8:
+        return this.api.hap.Characteristic.TargetHeaterCoolerState.HEAT;
+        break;
+      case 9:
+        return this.api.hap.Characteristic.TargetHeaterCoolerState.COOL;
+        break;
+      default:
+        this.log.info('Unhandled ac_mode in getTargetACHeatingCooling. Returning auto as fail safe.');
+        return this.api.hap.Characteristic.TargetHeaterCoolerState.AUTO;
+        break;
+    }
   }
 
   getZoneAttribute(in_AirtouchId, zone_number:number, attribute: string): any {
@@ -254,7 +291,8 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
       return;
     }
     const zone = result.zones[zone_number];
-    const power_state = parseInt(zone.zone_power_state);
+    const my_ac_num = result.zoneMapping[+zone.zone_number];
+    const ac_status = result.acs[my_ac_num].ac_status!;
     switch(attribute) {
       case MAGIC.ATTR_NAME:
         return zone.zone_name;
@@ -279,15 +317,22 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
         return this.getTargetHeatingCoolingState(zone, result);
         break;
       case MAGIC.ATTR_CURRENT_TEMP:
-        return +zone.zone_temp;
+        if(+zone.zone_has_sensor === 1) {
+          return +zone.zone_temp;
+        } else {
+          return +ac_status.ac_temp;
+        }
         break;
       case MAGIC.ATTR_TARGET_TEMP:
         return +zone.zone_target;
         break;
+      case MAGIC.ATTR_ZONE_PERCENTAGE:
+        return +zone.zone_damper_position;
+        break;
     }
   }
 
-  setZoneAttribute(in_AirtouchId, zone_number:number, attribute: string, value: any): any {
+  setZoneAttribute(in_AirtouchId, zone_number:number, attribute: string, value) {
     const result = this.airtouch_devices.find(({ AirtouchId }) => AirtouchId === in_AirtouchId);
     if(result === undefined) {
       this.log.debug('Error getting the airtouch device in setzoneattribute:', in_AirtouchId);
@@ -295,6 +340,9 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
     }
     const zone = result.zones[zone_number];
     switch(attribute) {
+      case MAGIC.ATTR_ZONE_POWER:
+        this.setZoneActive(zone, result, value);
+        break;
       case MAGIC.ATTR_TARGET_HEATCOOL:
         this.setTargetHeatingCoolingState(zone, result, value);
         break;
@@ -304,7 +352,19 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
     }
   }
 
-  setTargetHeatingCoolingState(zone: ZoneStatus, AirTouchWrapper: Airtouch5Wrapper, value: any) {
+  setZoneActive(zone: ZoneStatus, AirTouchWrapper: Airtouch5Wrapper, value) {
+    switch(value) {
+      case this.api.hap.Characteristic.Active.INACTIVE:
+        AirTouchWrapper.api.zoneSetActive(+zone.zone_number, false);
+        break;
+      case this.api.hap.Characteristic.Active.ACTIVE:
+        AirTouchWrapper.api.zoneSetActive(+zone.zone_number, true);
+        break;
+    }
+    this.log.debug('Setting active state, value='+value);
+  }
+
+  setTargetHeatingCoolingState(zone: ZoneStatus, AirTouchWrapper: Airtouch5Wrapper, value) {
     switch(value) {
       case this.api.hap.Characteristic.TargetHeatingCoolingState.OFF:
         AirTouchWrapper.api.zoneSetActive(+zone.zone_number, false);
@@ -325,7 +385,7 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
     this.log.debug('Setting target heating cooling state, value='+value);
   }
 
-  setTargetTemperature(zone: ZoneStatus, AirTouchWrapper: Airtouch5Wrapper, value: any) {
+  setTargetTemperature(zone: ZoneStatus, AirTouchWrapper: Airtouch5Wrapper, value) {
     AirTouchWrapper.api.zoneSetTargetTemperature(+zone.zone_number, +value);
     this.log.debug('Setting target temperature:'+value);
   }
@@ -335,10 +395,10 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
     const ac_mode = +AirTouchWrapper.acs[my_ac_num].ac_status!.ac_mode;
     const power_state = parseInt(zone.zone_power_state);
     if(power_state === 0){
-      return this.api.hap.Characteristic.CurrentHeatingCoolingState.OFF;
+      return this.api.hap.Characteristic.CurrentHeaterCoolerState.INACTIVE;
     } else {
       if(+zone.zone_damper_position === 0) {
-        return this.api.hap.Characteristic.CurrentHeatingCoolingState.OFF;
+        return this.api.hap.Characteristic.CurrentHeaterCoolerState.INACTIVE;
       }
       const zone_target = +zone.zone_target;
       const zone_current = +zone.zone_temp;
@@ -346,34 +406,34 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
         case 0:
           this.log.debug('AC is set to AUTO mode and zone is on.  Interpreting response. target: '+zone_target+'. current: '+zone_current);
           if(zone_target < zone_current) {
-            return this.api.hap.Characteristic.CurrentHeatingCoolingState.COOL;
+            return this.api.hap.Characteristic.CurrentHeaterCoolerState.COOLING;
           } else {
-            return this.api.hap.Characteristic.CurrentHeatingCoolingState.HEAT;
+            return this.api.hap.Characteristic.CurrentHeaterCoolerState.HEATING;
           }
           break;
         case 1:
-          return this.api.hap.Characteristic.CurrentHeatingCoolingState.HEAT;
+          return this.api.hap.Characteristic.CurrentHeaterCoolerState.HEATING;
           break;
         case 2:
           this.log.info('AC is set to DRY mode.  This is currently unhandled.  Reporting it as cool instead. ');
-          return this.api.hap.Characteristic.CurrentHeatingCoolingState.COOL;
+          return this.api.hap.Characteristic.CurrentHeaterCoolerState.COOLING;
           break;
         case 3:
           this.log.info('AC is set to FAN mode.  This is currently unhandled.  Reporting it as cool instead. ');
-          return this.api.hap.Characteristic.CurrentHeatingCoolingState.COOL;
+          return this.api.hap.Characteristic.CurrentHeaterCoolerState.COOLING;
           break;
         case 4:
-          return this.api.hap.Characteristic.CurrentHeatingCoolingState.COOL;
+          return this.api.hap.Characteristic.CurrentHeaterCoolerState.COOLING;
           break;
         case 8:
-          return this.api.hap.Characteristic.CurrentHeatingCoolingState.HEAT;
+          return this.api.hap.Characteristic.CurrentHeaterCoolerState.HEATING;
           break;
         case 9:
-          return this.api.hap.Characteristic.CurrentHeatingCoolingState.COOL;
+          return this.api.hap.Characteristic.CurrentHeaterCoolerState.COOLING;
           break;
         default:
           this.log.info('Unhandled ac_mode in getCurrentHeatingCoolingState. Returning off as fail safe.');
-          return this.api.hap.Characteristic.CurrentHeatingCoolingState.OFF;
+          return this.api.hap.Characteristic.CurrentHeaterCoolerState.INACTIVE;
           break;
       }
     }
@@ -382,40 +442,37 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
   getTargetHeatingCoolingState(zone: ZoneStatus, AirTouchWrapper: Airtouch5Wrapper) {
     const my_ac_num = AirTouchWrapper.zoneMapping[+zone.zone_number];
     const ac_mode = +AirTouchWrapper.acs[my_ac_num].ac_status!.ac_mode;
-    const power_state = parseInt(zone.zone_power_state);
-    if(power_state === 0){
-      return this.api.hap.Characteristic.TargetHeatingCoolingState.OFF;
-    } else {
-      switch(ac_mode) {
-        case 0:
-          return this.api.hap.Characteristic.TargetHeatingCoolingState.AUTO;
-          break;
-        case 1:
-          return this.api.hap.Characteristic.TargetHeatingCoolingState.HEAT;
-          break;
-        case 2:
-          this.log.info('AC is set to DRY mode.  This is currently unhandled.  Reporting it as cool instead. ');
-          return this.api.hap.Characteristic.TargetHeatingCoolingState.COOL;
-          break;
-        case 3:
-          this.log.info('AC is set to FAN mode.  This is currently unhandled.  Reporting it as cool instead. ');
-          return this.api.hap.Characteristic.TargetHeatingCoolingState.COOL;
-          break;
-        case 4:
-          return this.api.hap.Characteristic.TargetHeatingCoolingState.COOL;
-          break;
-        case 8:
-          return this.api.hap.Characteristic.TargetHeatingCoolingState.HEAT;
-          break;
-        case 9:
-          return this.api.hap.Characteristic.TargetHeatingCoolingState.COOL;
-          break;
-        default:
-          this.log.info('Unhandled ac_mode in getCurrentHeatingCoolingState. Returning off as fail safe.');
-          return this.api.hap.Characteristic.TargetHeatingCoolingState.OFF;
-          break;
-      }
+
+    switch(ac_mode) {
+      case 0:
+        return this.api.hap.Characteristic.TargetHeaterCoolerState.AUTO;
+        break;
+      case 1:
+        return this.api.hap.Characteristic.TargetHeaterCoolerState.HEAT;
+        break;
+      case 2:
+        this.log.info('AC is set to DRY mode.  This is currently unhandled.  Reporting it as cool instead. ');
+        return this.api.hap.Characteristic.TargetHeaterCoolerState.COOL;
+        break;
+      case 3:
+        this.log.info('AC is set to FAN mode.  This is currently unhandled.  Reporting it as cool instead. ');
+        return this.api.hap.Characteristic.TargetHeaterCoolerState.COOL;
+        break;
+      case 4:
+        return this.api.hap.Characteristic.TargetHeaterCoolerState.COOL;
+        break;
+      case 8:
+        return this.api.hap.Characteristic.TargetHeaterCoolerState.HEAT;
+        break;
+      case 9:
+        return this.api.hap.Characteristic.TargetHeaterCoolerState.COOL;
+        break;
+      default:
+        this.log.info('Unhandled ac_mode in getCurrentHeatingCoolingState. Returning atuo as fail safe.');
+        return this.api.hap.Characteristic.TargetHeaterCoolerState.AUTO;
+        break;
     }
+
   }
 
   // configure cached accessories
@@ -423,7 +480,7 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
     this.log.info('Loading accessory from cache:', accessory.displayName);
 
     // add the restored accessory to the accessories cache so we can track if it has already been registered
-    this.accessories.push(accessory);
+    // this.zoneAccessories.push(accessory);
 
     // if (accessory.displayName in this.units || accessory.displayName in this.zones) {
     //   this.log('[' + accessory.displayName + '] is already configured');

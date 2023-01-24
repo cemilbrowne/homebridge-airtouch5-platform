@@ -102,8 +102,10 @@ export class MAGIC {
 
   static ATTR_NAME = 'name';
   static ATTR_ZONE_POWER = 'zone_power_state';
+  static ATTR_ZONE_PERCENTAGE = 'zone_percentage';
   static ATTR_CURRENT_HEATCOOL = 'zone_current_heatcool';
   static ATTR_TARGET_HEATCOOL = 'zone_target_heatcool';
   static ATTR_CURRENT_TEMP = 'zone_current_temp';
   static ATTR_TARGET_TEMP = 'zone_target_temp';
+  static ATTR_AC_ACTIVE = 'ac_active';
 }

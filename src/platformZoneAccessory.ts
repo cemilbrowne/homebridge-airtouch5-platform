@@ -1,4 +1,4 @@
-import { Service, PlatformAccessory, CharacteristicValue } from 'homebridge';
+import { Service, PlatformAccessory } from 'homebridge';
 
 import { AirtouchPlatform } from './platform';
 
@@ -6,6 +6,7 @@ import { MAGIC } from './magic';
 
 export class AirTouchZoneAccessory {
   private service: Service;
+  // private fanService: Service;
   AirtouchId;
   ZoneNumber;
   minTemp: number;
@@ -37,35 +38,67 @@ export class AirTouchZoneAccessory {
         this.AirtouchId || 'Unknown',
       );
 
-    this.service = this.accessory.getService(this.platform.Service.Thermostat) ||
-                    this.accessory.addService(this.platform.Service.Thermostat);
+    this.service = this.accessory.getService(this.platform.Service.HeaterCooler) ||
+                    this.accessory.addService(this.platform.Service.HeaterCooler);
 
-    this.service.getCharacteristic(this.platform.Characteristic.CurrentHeatingCoolingState)
+    this.service.getCharacteristic(this.platform.Characteristic.CurrentHeaterCoolerState)
       .onGet(this.handleCurrentHeatingCoolingStateGet.bind(this));
 
-    this.service.getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState)
+    this.service.getCharacteristic(this.platform.Characteristic.TargetHeaterCoolerState)
       .onGet(this.handleTargetHeatingCoolingStateGet.bind(this))
       .onSet(this.handleTargetHeatingCoolingStateSet.bind(this));
 
     this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature)
       .onGet(this.handleCurrentTemperatureGet.bind(this));
 
-    this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature)
+
+    this.service.getCharacteristic(this.platform.Characteristic.Active)
+      .onGet(this.handleActiveGet.bind(this))
+      .onSet(this.handleActiveSet.bind(this));
+
+    this.service.getCharacteristic(this.platform.Characteristic.Name)
+      .onGet(this.handleNameGet.bind(this));
+
+    this.service.getCharacteristic(this.platform.Characteristic.CoolingThresholdTemperature)
       .onGet(this.handleTargetTemperatureGet.bind(this))
-      .onSet(this.handleTargetTemperatureSet.bind(this))
-      .setProps({
+      .onSet(this.handleTargetTemperatureSet.bind(this)).setProps({
+        minValue: this.minTemp,
+        maxValue: this.maxTemp,
+        minStep: this.step,
+      });
+    this.service.getCharacteristic(this.platform.Characteristic.HeatingThresholdTemperature)
+      .onGet(this.handleTargetTemperatureGet.bind(this))
+      .onSet(this.handleTargetTemperatureSet.bind(this)).setProps({
         minValue: this.minTemp,
         maxValue: this.maxTemp,
         minStep: this.step,
       });
 
+    this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
+      .onGet(this.handleRotationSpeedGet.bind(this));
+    // this.fanService = this.accessory.getService(this.platform.Service.Fanv2) ||
+    //   this.accessory.addService(this.platform.Service.Fanv2);
 
-    this.service.getCharacteristic(this.platform.Characteristic.Name)
-      .onGet(this.handleNameGet.bind(this));
-
-
-
+    // // create handlers for required characteristics
+    // this.fanService.getCharacteristic(this.platform.Characteristic.Active)
+    //   .onGet(this.handleFanActiveGet.bind(this))
+    //   .onSet(this.handleFanActiveSet.bind(this));
   }
+
+  handleRotationSpeedGet() {
+    const currentValue = this.platform.getZoneAttribute(this.AirtouchId, this.ZoneNumber, MAGIC.ATTR_ZONE_PERCENTAGE);
+    return currentValue;
+  }
+
+  handleActiveGet() {
+    const currentValue = this.platform.getZoneAttribute(this.AirtouchId, this.ZoneNumber, MAGIC.ATTR_ZONE_POWER);
+    return currentValue;
+  }
+
+  handleActiveSet(value) {
+    // this.platform.log.debug('SHould set Fan active to: '+value);
+  }
+
 
   // check if value is undefined, and replace it with a default value
   isNull(val, nullVal) {
@@ -73,14 +106,14 @@ export class AirTouchZoneAccessory {
   }
 
   updateAll() {
-    this.service.getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState)
-      .updateValue(this.handleTargetHeatingCoolingStateGet());
-    this.service.getCharacteristic(this.platform.Characteristic.CurrentHeatingCoolingState)
-      .updateValue(this.handleCurrentHeatingCoolingStateGet());
-    this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature)
-      .updateValue(this.handleCurrentTemperatureGet());
-    this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature)
-      .updateValue(this.handleTargetTemperatureGet());
+    // this.service.getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState)
+    //   .updateValue(this.handleTargetHeatingCoolingStateGet());
+    // this.service.getCharacteristic(this.platform.Characteristic.CurrentHeatingCoolingState)
+    //   .updateValue(this.handleCurrentHeatingCoolingStateGet());
+    // this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature)
+    //   .updateValue(this.handleCurrentTemperatureGet());
+    // this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature)
+    //   .updateValue(this.handleTargetTemperatureGet());
   }
 
   /**
