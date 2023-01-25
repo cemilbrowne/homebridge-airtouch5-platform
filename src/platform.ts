@@ -50,6 +50,7 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
       this.log.debug('Executed didFinishLaunching callback');
       for(let i = 0;i<this.accessories.length;i++) {
         this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [this.accessories[i]]);
+        this.log.debug('Unregistering accessory. '+i);
       }
       // run the method to discover / register your devices as accessories
       this.discoverDevices();

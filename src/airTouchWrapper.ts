@@ -91,10 +91,9 @@ export class Airtouch5Wrapper {
     this.zones[zone_number].zone_status = zone_status;
     const ac_number = this.zones[zone_number].ac_number;
     this.log.debug('Got a zone status:' + JSON.stringify(zone_status));
-    if(this.zones[zone_number].registered === false) {
-      this.registerZone(zone_number, ac_number);
+    if(this.zones[zone_number].registered === true) {
+      this.zones[zone_number].zone_accessory!.updateStatus(this.zones[zone_number], this.acs[ac_number]);
     }
-    this.zones[zone_number].zone_accessory!.updateStatus(this.zones[zone_number], this.acs[ac_number]);
   }
 
   AddZoneName(in_zone_number, zone_name) {
@@ -104,6 +103,9 @@ export class Airtouch5Wrapper {
       return;
     } else {
       this.zones[zone_number].zone_name = zone_name;
+      if(this.zones[zone_number].registered === false) {
+        this.registerZone(zone_number, this.zones[zone_number].ac_number);
+      }
     }
   }
 
@@ -136,7 +138,7 @@ export class Airtouch5Wrapper {
       this.log.error('Attempting to register an AC without a status.');
       return;
     }
-    const uuid = this.platform.api.hap.uuid.generate('AC'+this.AirtouchId+ac_number);
+    const uuid = this.platform.api.hap.uuid.generate('AC '+this.AirtouchId+ac_number);
     const platform_accessory = new this.platform.api.platformAccessory(this.acs[ac_number].ac_ability.ac_name, uuid);
     const ac_accessory = new AirTouchACAccessory(
       this.platform,
@@ -167,7 +169,7 @@ export class Airtouch5Wrapper {
       this.log.error('Attempting to register a Zone without a status.');
       return;
     }
-    const uuid = this.platform.api.hap.uuid.generate('Zone'+this.AirtouchId+ac_number+zone_number);
+    const uuid = this.platform.api.hap.uuid.generate('Zone '+this.AirtouchId+ac_number+zone_number);
     const platform_accessory = new this.platform.api.platformAccessory(this.zones[zone_number].zone_name, uuid);
     const zone_accessory:AirTouchZoneAccessory = new AirTouchZoneAccessory(this.platform,
       platform_accessory,
