@@ -1,5 +1,4 @@
-import Characteristic from 'homebridge';
-import CharacteristicValue from 'homebridge';
+
 
 export class MAGIC {
 
@@ -58,14 +57,12 @@ export class MAGIC {
 
   static AC_TARGET_TYPES = {
     KEEP: 0,
-    SET_VALUE: 1,
-    DECREMENT: 2,
-    INCREMENT: 3,
+    SET_VALUE: 4,
   };
 
   static AC_UNIT_DEFAULT = 0;
 
-  static AC_TARGET_KEEP = 63;
+  static AC_TARGET_DEFAULT = 0;
 
   static ZONE_POWER_STATES = {
     KEEP: 0,

@@ -1,29 +1,40 @@
-import { Service, PlatformAccessory } from 'homebridge';
-
+import { Service, PlatformAccessory, Logger } from 'homebridge';
 import { AirtouchPlatform } from './platform';
-
+import { AC, Zone } from './airTouchWrapper';
+import { AirtouchAPI } from './api';
 import { MAGIC } from './magic';
 
 export class AirTouchZoneAccessory {
   private service: Service;
-  // private fanService: Service;
   AirtouchId;
   ZoneNumber;
   minTemp: number;
   maxTemp: number;
   step: number;
+  private ac: AC;
+  private zone: Zone;
+  log: Logger;
+  api: AirtouchAPI;
+
   constructor(
     private readonly platform: AirtouchPlatform,
     private readonly accessory: PlatformAccessory,
-    AirtouchId,
-    ZoneNumber,
+    AirtouchId: string,
+    ZoneNumber: number,
+    zone: Zone,
+    ac: AC,
+    log: Logger,
+    api: AirtouchAPI,
   ) {
     this.AirtouchId = AirtouchId;
     this.ZoneNumber = ZoneNumber;
     this.minTemp = 15;
     this.maxTemp = 30;
     this.step = 1;
-
+    this.ac = ac;
+    this.zone = zone;
+    this.log = log;
+    this.api = api;
     this.accessory.getService(this.platform.Service.AccessoryInformation)
       ?.setCharacteristic(
         this.platform.Characteristic.Manufacturer,
@@ -76,27 +87,51 @@ export class AirTouchZoneAccessory {
 
     this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
       .onGet(this.handleRotationSpeedGet.bind(this));
-    // this.fanService = this.accessory.getService(this.platform.Service.Fanv2) ||
-    //   this.accessory.addService(this.platform.Service.Fanv2);
+    if(+this.zone.zone_status!.zone_has_sensor === 0) {
+      this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
+        .onSet(this.handleRotationSpeedSet.bind(this));
+    }
+  }
 
-    // // create handlers for required characteristics
-    // this.fanService.getCharacteristic(this.platform.Characteristic.Active)
-    //   .onGet(this.handleFanActiveGet.bind(this))
-    //   .onSet(this.handleFanActiveSet.bind(this));
+  updateStatus(zone: Zone, ac: AC) {
+    this.zone = zone;
+    this.ac = ac;
+    this.updateAll();
   }
 
   handleRotationSpeedGet() {
-    const currentValue = this.platform.getZoneAttribute(this.AirtouchId, this.ZoneNumber, MAGIC.ATTR_ZONE_PERCENTAGE);
-    return currentValue;
+    const zone_status = this.zone.zone_status!;
+    return zone_status.zone_damper_position;
+  }
+
+  handleRotationSpeedSet(value) {
+    this.api.zoneSetActive(+this.zone.zone_number, value);
   }
 
   handleActiveGet() {
-    const currentValue = this.platform.getZoneAttribute(this.AirtouchId, this.ZoneNumber, MAGIC.ATTR_ZONE_POWER);
-    return currentValue;
+    const zone_status = this.zone.zone_status!;
+    switch(+zone_status.zone_power_state) {
+      case 0:
+        return this.platform.Characteristic.Active.INACTIVE;
+        break;
+      case 1:
+        return this.platform.Characteristic.Active.ACTIVE;
+        break;
+      default:
+        return this.platform.Characteristic.Active.INACTIVE;
+        break;
+    }
   }
 
   handleActiveSet(value) {
-    // this.platform.log.debug('SHould set Fan active to: '+value);
+    switch(value) {
+      case this.platform.Characteristic.Active.INACTIVE:
+        this.api.zoneSetActive(+this.zone.zone_number, false);
+        break;
+      case this.platform.Characteristic.Active.ACTIVE:
+        this.api.zoneSetActive(+this.zone.zone_number, true);
+        break;
+    }
   }
 
 
@@ -106,32 +141,81 @@ export class AirTouchZoneAccessory {
   }
 
   updateAll() {
-    // this.service.getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState)
-    //   .updateValue(this.handleTargetHeatingCoolingStateGet());
-    // this.service.getCharacteristic(this.platform.Characteristic.CurrentHeatingCoolingState)
-    //   .updateValue(this.handleCurrentHeatingCoolingStateGet());
-    // this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature)
-    //   .updateValue(this.handleCurrentTemperatureGet());
-    // this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature)
-    //   .updateValue(this.handleTargetTemperatureGet());
+    this.service.getCharacteristic(this.platform.Characteristic.TargetHeaterCoolerState)
+      .updateValue(this.handleTargetHeatingCoolingStateGet());
+    this.service.getCharacteristic(this.platform.Characteristic.CurrentHeaterCoolerState)
+      .updateValue(this.handleCurrentHeatingCoolingStateGet());
+    this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature)
+      .updateValue(this.handleCurrentTemperatureGet());
+    this.service.getCharacteristic(this.platform.Characteristic.CoolingThresholdTemperature)
+      .updateValue(this.handleTargetTemperatureGet());
+    this.service.getCharacteristic(this.platform.Characteristic.HeatingThresholdTemperature)
+      .updateValue(this.handleTargetTemperatureGet());
+    this.service.getCharacteristic(this.platform.Characteristic.Name)
+      .updateValue(this.handleNameGet());
+    this.service.getCharacteristic(this.platform.Characteristic.Active)
+      .updateValue(this.handleActiveGet());
+    this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
+      .updateValue(this.handleRotationSpeedGet());
   }
 
   /**
    * Handle requests to get the current value of the "Name" characteristic
    */
   handleNameGet() {
-    const name = this.isNull(this.platform.getZoneAttribute(this.AirtouchId, this.ZoneNumber, MAGIC.ATTR_NAME), 'Default Name');
-    return name;
+    return this.zone.zone_name;
   }
 
   /**
    * Handle requests to get the current value of the "Current Heater-Cooler State" characteristic
    */
   handleCurrentHeatingCoolingStateGet() {
-
-    const currentValue = this.platform.getZoneAttribute(this.AirtouchId, this.ZoneNumber, MAGIC.ATTR_CURRENT_HEATCOOL);
-
-    return currentValue;
+    const zone_status = this.zone.zone_status!;
+    const power_state = +zone_status.zone_power_state;
+    const ac_mode = +this.ac.ac_status!.ac_mode;
+    if(power_state === 0){
+      return this.platform.Characteristic.CurrentHeaterCoolerState.INACTIVE;
+    } else {
+      if(+zone_status.zone_damper_position === 0) {
+        return this.platform.Characteristic.CurrentHeaterCoolerState.IDLE;
+      }
+      // Damper is open, so let's extrapolate from the AC Mode.
+      const zone_target = +zone_status.zone_target;
+      const zone_current = +zone_status.zone_temp;
+      switch(ac_mode) {
+        case 0:
+          if(zone_target < zone_current) {
+            return this.platform.Characteristic.CurrentHeaterCoolerState.COOLING;
+          } else {
+            return this.platform.Characteristic.CurrentHeaterCoolerState.HEATING;
+          }
+          break;
+        case 1:
+          return this.platform.Characteristic.CurrentHeaterCoolerState.HEATING;
+          break;
+        case 2:
+          this.log.info('AC is set to DRY mode.  This is currently unhandled.  Reporting it as cool instead. ');
+          return this.platform.Characteristic.CurrentHeaterCoolerState.COOLING;
+          break;
+        case 3:
+          this.log.info('AC is set to FAN mode.  This is currently unhandled.  Reporting it as cool instead. ');
+          return this.platform.Characteristic.CurrentHeaterCoolerState.COOLING;
+          break;
+        case 4:
+          return this.platform.Characteristic.CurrentHeaterCoolerState.COOLING;
+          break;
+        case 8:
+          return this.platform.Characteristic.CurrentHeaterCoolerState.HEATING;
+          break;
+        case 9:
+          return this.platform.Characteristic.CurrentHeaterCoolerState.COOLING;
+          break;
+        default:
+          this.log.info('Unhandled ac_mode in getCurrentHeatingCoolingState. Returning off as fail safe.');
+          return this.platform.Characteristic.CurrentHeaterCoolerState.INACTIVE;
+          break;
+      }
+    }
   }
 
 
@@ -139,42 +223,92 @@ export class AirTouchZoneAccessory {
    * Handle requests to get the current value of the "Target Heater-Cooler State" characteristic
    */
   handleTargetHeatingCoolingStateGet() {
-
-    const currentValue = this.platform.getZoneAttribute(this.AirtouchId, this.ZoneNumber, MAGIC.ATTR_TARGET_HEATCOOL);
-
-    return currentValue;
+    const ac_mode = +this.ac.ac_status!.ac_mode;
+    switch(ac_mode) {
+      case 0:
+        return this.platform.Characteristic.TargetHeaterCoolerState.AUTO;
+        break;
+      case 1:
+        return this.platform.Characteristic.TargetHeaterCoolerState.HEAT;
+        break;
+      case 2:
+        this.log.info('AC is set to DRY mode.  This is currently unhandled.  Reporting it as cool instead. ');
+        return this.platform.Characteristic.TargetHeaterCoolerState.COOL;
+        break;
+      case 3:
+        this.log.info('AC is set to FAN mode.  This is currently unhandled.  Reporting it as cool instead. ');
+        return this.platform.Characteristic.TargetHeaterCoolerState.COOL;
+        break;
+      case 4:
+        return this.platform.Characteristic.TargetHeaterCoolerState.COOL;
+        break;
+      case 8:
+        return this.platform.Characteristic.TargetHeaterCoolerState.HEAT;
+        break;
+      case 9:
+        return this.platform.Characteristic.TargetHeaterCoolerState.COOL;
+        break;
+      default:
+        this.log.info('Unhandled ac_mode in getTargetHeatingCoolingState. Returning auto as fail safe.');
+        return this.platform.Characteristic.TargetHeaterCoolerState.AUTO;
+        break;
+    }
   }
 
   /**
    * Handle requests to set the "Target Heater-Cooler State" characteristic
    */
   handleTargetHeatingCoolingStateSet(value) {
-    this.platform.setZoneAttribute(this.AirtouchId, this.ZoneNumber, MAGIC.ATTR_TARGET_HEATCOOL, value);
+    const zone_number = this.zone.zone_number;
+    switch(value) {
+      case this.platform.Characteristic.TargetHeaterCoolerState.COOL:
+        this.api.zoneSetActive(zone_number, true);
+        this.api.acSetTargetHeatingCoolingState(this.ac.ac_number, MAGIC.AC_TARGET_STATES.COOL);
+        break;
+      case this.platform.Characteristic.TargetHeatingCoolingState.HEAT:
+        this.api.zoneSetActive(zone_number, true);
+        this.api.acSetTargetHeatingCoolingState(this.ac.ac_number, MAGIC.AC_TARGET_STATES.HEAT);
+        break;
+      case this.platform.Characteristic.TargetHeatingCoolingState.AUTO:
+        this.api.zoneSetActive(zone_number, true);
+        this.api.acSetTargetHeatingCoolingState(this.ac.ac_number, MAGIC.AC_TARGET_STATES.AUTO);
+        break;
+    }
   }
 
   /**
    * Handle requests to get the current value of the "Current Temperature" characteristic
    */
   handleCurrentTemperatureGet() {
-
-    const currentValue = this.platform.getZoneAttribute(this.AirtouchId, this.ZoneNumber, MAGIC.ATTR_CURRENT_TEMP);
-
-    return currentValue;
+    const zone_status = this.zone.zone_status!;
+    if(+zone_status.zone_has_sensor === 1) {
+      return this.zone.zone_status!.zone_temp;
+    } else {
+      return this.ac.ac_status!.ac_temp;
+    }
   }
 
   /**
    * Handle requests to get the current value of the "Current Temperature" characteristic
    */
   handleTargetTemperatureGet() {
-    const currentValue = this.platform.getZoneAttribute(this.AirtouchId, this.ZoneNumber, MAGIC.ATTR_TARGET_TEMP);
-
-    return currentValue;
+    const zone_status = this.zone.zone_status!;
+    if(+zone_status.zone_has_sensor === 1) {
+      return this.zone.zone_status!.zone_target;
+    } else {
+      return this.ac.ac_status!.ac_target;
+    }
   }
 
   /**
    * Handle requests to get the current value of the "Current Temperature" characteristic
    */
   handleTargetTemperatureSet(value) {
-    this.platform.setZoneAttribute(this.AirtouchId, this.ZoneNumber, MAGIC.ATTR_TARGET_TEMP, value);
+    if(+this.zone.zone_status!.zone_has_sensor === 1) {
+      this.api.zoneSetTargetTemperature(+this.zone.zone_number, +value);
+    } else {
+      this.api.acSetTargetTemperature(+this.ac.ac_number, +value);
+    }
+    this.log.debug('Setting target temperature:'+value);
   }
 }

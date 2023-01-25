@@ -83,7 +83,7 @@ export class AirtouchAPI {
   static async discoverDevices(log, myemitter: EventEmitter) {
     const message = Buffer.from('::REQUEST-POLYAIRE-AIRTOUCH-DEVICE-INFO:;');
     const socket = dgram.createSocket('udp4');
-    socket.on('message', (message, emitter) => {
+    socket.on('message', (message) => {
       if(message.toString() !== '::REQUEST-POLYAIRE-AIRTOUCH-DEVICE-INFO:;') {
         const messages = message.toString().split(',');
         const ip = messages[0];
@@ -99,7 +99,7 @@ export class AirtouchAPI {
     socket.bind(49005);
     socket.on('listening', () => {
       socket.setBroadcast(true);
-      const timer = setTimeout(() => {
+      setTimeout(() => {
         log.debug('API DISCOVERY | Hit timeout looking for devices, closing socket.');
         try {
           socket.close();
@@ -230,15 +230,41 @@ export class AirtouchAPI {
     byte1 = byte1 | ((this.isNull(unit.ac_power_state, MAGIC.AC_POWER_STATES.KEEP)) << 6);
     let byte2 = this.isNull(unit.ac_fan_speed, MAGIC.AC_FAN_SPEEDS.KEEP);
     byte2 = byte2 | ((this.isNull(unit.ac_mode, MAGIC.AC_MODES.KEEP)) << 4);
-    let byte3 = this.isNull(unit.ac_target_value, MAGIC.AC_TARGET_KEEP);
-    byte3 = byte3 | ((this.isNull(unit.ac_target_type, MAGIC.AC_TARGET_TYPES.KEEP)) << 6);
-    const byte4 = 0;
+    const byte3 = (this.isNull(unit.ac_target_value, MAGIC.AC_TARGET_TYPES.KEEP) << 4);
+    const byte4 = this.isNull(unit.ac_target_value, MAGIC.AC_TARGET_DEFAULT);
     return Buffer.from([byte1, byte2, byte3, byte4]);
   }
 
   // send command to change AC mode (OFF/HEATING/COOLING/AUTO)
+  acSetActive(unit_number, active) {
+    const target = {
+      unit_number: unit_number,
+      ac_power_state: active ? MAGIC.AC_POWER_STATES.ON : MAGIC.AC_POWER_STATES.OFF,
+    };
+    this.log.debug('API | Setting AC temperature to: ' + JSON.stringify(target));
+    const data: Buffer = this.encode_ac_control(target);
+    const to_send = Buffer.from([0x00, 0x04, 0x00, 0x01, ...data]);
+    const message = this.assemble_standard_message(MAGIC.SUBTYPE_AC_CTRL, to_send);
+    this.send(message);
+  }
+
+  // send command to change AC mode (OFF/HEATING/COOLING/AUTO)
+  acSetTargetTemperature(unit_number, value: number) {
+    const target = {
+      ac_unit_number: unit_number,
+      ac_target_keep: MAGIC.AC_TARGET_TYPES.SET_VALUE,
+      ac_target_value: (value*10)+100,
+    };
+    this.log.debug('API | Setting AC temperature to: ' + JSON.stringify(target));
+    const data: Buffer = this.encode_ac_control(target);
+    const to_send = Buffer.from([0x00, 0x04, 0x00, 0x01, ...data]);
+    const message = this.assemble_standard_message(MAGIC.SUBTYPE_AC_CTRL, to_send);
+    this.send(message);
+  }
+
+  // send command to change AC mode (OFF/HEATING/COOLING/AUTO)
   acSetTargetHeatingCoolingState(unit_number, state) {
-    let target: any;
+    let target;
     switch (state) {
       case MAGIC.AC_TARGET_STATES.OFF: // OFF
         target = {
@@ -283,8 +309,9 @@ export class AirtouchAPI {
     };
     this.log.debug('API | Setting AC fan speed ' + JSON.stringify(target));
     const data = this.encode_ac_control(target);
-
-    // this.send(MAGIC.MSGTYPE_AC_CTRL, data);
+    const to_send = Buffer.from([0x00, 0x04, 0x00, 0x01, ...data]);
+    const message = this.assemble_standard_message(MAGIC.SUBTYPE_AC_CTRL, to_send);
+    this.send(message);
   }
 
 
@@ -398,24 +425,17 @@ export class AirtouchAPI {
 
   // decode groups status information and send it to homebridge
   decode_zones_status(count_repeats, data_length, data) {
-    const groups_status: any[]= [];
     // this.log("Count to decode : " + count_repeats + " length : " + data_length);
     for (let i = 0; i < count_repeats; i++) {
       const group = data.slice(i*8, i*8+8);
       // this.log(group)
       const zone_power_state = (group[0] & 0b11000000) >> 6;
       const zone_number = group[0] & 0b00111111;
-
       const zone_control_type = (group[1] & 0b10000000) >> 7;
       const zone_open_perc = group[1] & 0b01111111;
-      const zone_has_turbo = 0; // Hangover from AT4, not used, should remove
-
       const zone_target = ((group[2])+100.0)/10.0;
-
       const zone_has_sensor = (group[3] & 0b10000000) >> 7;
-
       const zone_temp = (((group[4] << 8) + ((group[5]))) - 500) / 10;
-
       const zone_has_spill = (group[6] & 0b00000010) >> 1;
       const zone_battery_low = (group[6] & 0b00000001);
       const to_push = {
@@ -429,7 +449,6 @@ export class AirtouchAPI {
         zone_has_sensor: zone_has_sensor,
         zone_has_spill: zone_has_spill,
       };
-      groups_status.push(to_push);
       this.emitter.emit('zone_status', to_push, this.AirtouchId);
     }
     if(this.got_zone_status === false) {
@@ -455,6 +474,20 @@ export class AirtouchAPI {
       zone_power_state: active ? MAGIC.ZONE_POWER_STATES.ON : MAGIC.ZONE_POWER_STATES.OFF,
     };
     this.log.debug('API | Setting zone state: ' + JSON.stringify(target));
+    const data: Buffer = this.encode_zone_control(target);
+    const to_send = Buffer.from([0x00, 0x04, 0x00, 0x01, ...data]);
+    const message = this.assemble_standard_message(MAGIC.SUBTYPE_ZONE_CTRL, to_send);
+    this.send(message);
+  }
+
+  // send command to change zone percentage
+  zoneSetPercentage(zone_number, value) {
+    const target = {
+      zone_number: zone_number,
+      zone_target_type: MAGIC.ZONE_TARGET_TYPES.DAMPER,
+      zone_target: value,
+    };
+    this.log.debug('API | Setting zone percentage: ' + JSON.stringify(target));
     const data: Buffer = this.encode_zone_control(target);
     const to_send = Buffer.from([0x00, 0x04, 0x00, 0x01, ...data]);
     const message = this.assemble_standard_message(MAGIC.SUBTYPE_ZONE_CTRL, to_send);
