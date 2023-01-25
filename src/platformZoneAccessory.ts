@@ -89,7 +89,11 @@ export class AirTouchZoneAccessory {
       .onGet(this.handleRotationSpeedGet.bind(this));
     if(+this.zone.zone_status!.zone_has_sensor === 0) {
       this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
-        .onSet(this.handleRotationSpeedSet.bind(this));
+        .onSet(this.handleRotationSpeedSet.bind(this)).setProps({
+          minValue: 0,
+          maxValue: 100,
+          minStep: 5,
+        });
     }
   }
 
@@ -105,7 +109,7 @@ export class AirTouchZoneAccessory {
   }
 
   handleRotationSpeedSet(value) {
-    this.api.zoneSetActive(+this.zone.zone_number, value);
+    this.api.zoneSetPercentage(+this.zone.zone_number, value);
   }
 
   handleActiveGet() {

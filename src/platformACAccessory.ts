@@ -184,7 +184,6 @@ export class AirTouchACAccessory {
     const ac_mode = +ac_status.ac_mode;
     const zones_all_off = this.areAllZonesClosed(this.ac.ac_number);
     if(+ac_status.ac_power_state === 0){
-      this.log.debug('Returning inactive status for state of AC');
       return this.platform.Characteristic.CurrentHeaterCoolerState.INACTIVE;
     }
     if(zones_all_off === true) {

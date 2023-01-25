@@ -227,21 +227,21 @@ export class AirtouchAPI {
   // encode a message for AC command
   encode_ac_control(unit) {
     let byte1 = this.isNull(unit.ac_unit_number, MAGIC.AC_UNIT_DEFAULT);
-    byte1 = byte1 | ((this.isNull(unit.ac_power_state, MAGIC.AC_POWER_STATES.KEEP)) << 6);
+    byte1 = byte1 | ((this.isNull(unit.ac_power_state, MAGIC.AC_POWER_STATES.KEEP)) << 4);
     let byte2 = this.isNull(unit.ac_fan_speed, MAGIC.AC_FAN_SPEEDS.KEEP);
     byte2 = byte2 | ((this.isNull(unit.ac_mode, MAGIC.AC_MODES.KEEP)) << 4);
-    const byte3 = (this.isNull(unit.ac_target_value, MAGIC.AC_TARGET_TYPES.KEEP) << 4);
+    const byte3 = (this.isNull(unit.ac_target_keep, MAGIC.AC_TARGET_TYPES.KEEP) << 4);
     const byte4 = this.isNull(unit.ac_target_value, MAGIC.AC_TARGET_DEFAULT);
     return Buffer.from([byte1, byte2, byte3, byte4]);
   }
 
   // send command to change AC mode (OFF/HEATING/COOLING/AUTO)
   acSetActive(unit_number, active) {
+    this.log.debug('got in acSetActive, '+active);
     const target = {
       unit_number: unit_number,
       ac_power_state: active ? MAGIC.AC_POWER_STATES.ON : MAGIC.AC_POWER_STATES.OFF,
     };
-    this.log.debug('API | Setting AC temperature to: ' + JSON.stringify(target));
     const data: Buffer = this.encode_ac_control(target);
     const to_send = Buffer.from([0x00, 0x04, 0x00, 0x01, ...data]);
     const message = this.assemble_standard_message(MAGIC.SUBTYPE_AC_CTRL, to_send);
@@ -253,10 +253,12 @@ export class AirtouchAPI {
     const target = {
       ac_unit_number: unit_number,
       ac_target_keep: MAGIC.AC_TARGET_TYPES.SET_VALUE,
-      ac_target_value: (value*10)+100,
+      ac_target_value: (value*10)-100,
     };
+    this.log.info('trying to set temp to: '+value);
     this.log.debug('API | Setting AC temperature to: ' + JSON.stringify(target));
     const data: Buffer = this.encode_ac_control(target);
+    this.log.info(data);
     const to_send = Buffer.from([0x00, 0x04, 0x00, 0x01, ...data]);
     const message = this.assemble_standard_message(MAGIC.SUBTYPE_AC_CTRL, to_send);
     this.send(message);
@@ -265,6 +267,7 @@ export class AirtouchAPI {
   // send command to change AC mode (OFF/HEATING/COOLING/AUTO)
   acSetTargetHeatingCoolingState(unit_number, state) {
     let target;
+    this.log.debug('got in acSetTargetHeatingCooling, '+state);
     switch (state) {
       case MAGIC.AC_TARGET_STATES.OFF: // OFF
         target = {
