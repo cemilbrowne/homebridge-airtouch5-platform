@@ -30,8 +30,8 @@ export class AirTouchACAccessory {
   ) {
     this.AirtouchId = AirtouchId;
     this.ACNumber = ACNumber;
-    this.minTemp = 15;
-    this.maxTemp = 30;
+    this.minTemp = 0;
+    this.maxTemp = 35;
     this.step = 1;
     this.log = log;
     this.ac = ac;

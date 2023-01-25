@@ -28,8 +28,8 @@ export class AirTouchZoneAccessory {
   ) {
     this.AirtouchId = AirtouchId;
     this.ZoneNumber = ZoneNumber;
-    this.minTemp = 15;
-    this.maxTemp = 30;
+    this.minTemp = 0;
+    this.maxTemp = 35;
     this.step = 1;
     this.ac = ac;
     this.zone = zone;
