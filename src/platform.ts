@@ -1,4 +1,4 @@
-import { API, DynamicPlatformPlugin, Logger, PlatformConfig, Service, Characteristic } from 'homebridge';
+import { API, DynamicPlatformPlugin, Logger, PlatformConfig, Service, Characteristic, PlatformAccessory } from 'homebridge';
 import { AirtouchAPI } from './api';
 import { EventEmitter } from 'events';
 import { Airtouch5Wrapper } from './airTouchWrapper';
@@ -12,6 +12,7 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
   // public readonly zoneAccessories: string[] = [];
   public emitter: EventEmitter;
   airtouch_devices: Array<Airtouch5Wrapper>;
+  accessories: Array<PlatformAccessory>;
   //
   // Airtouch platform
   // Homebridge platform which creates accessories for AC units and AC zones
@@ -25,6 +26,7 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
     this.airtouch_devices = new Array<Airtouch5Wrapper>();
     this.log.debug('Starting to set up Airtouch5 platform.');
     this.emitter = new EventEmitter();
+    this.accessories = new Array<PlatformAccessory>();
     // initialize accessory lists
     // set up callbacks from API
     // this.airtouch = new AirtouchAPI(input_log);
@@ -46,6 +48,9 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
 
     this.api.on('didFinishLaunching', () => {
       this.log.debug('Executed didFinishLaunching callback');
+      for(let i = 0;i<this.accessories.length;i++) {
+        this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [this.accessories[i]]);
+      }
       // run the method to discover / register your devices as accessories
       this.discoverDevices();
     });
@@ -130,8 +135,8 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
 
   // configure cached accessories
   configureAccessory(accessory) {
-    this.log.debug('Deleting cached accessories');
-    this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+    this.log.debug('Deleting cached accessories: '+this.accessories.length);
+    this.accessories.push(accessory);
   }
 }
 
