@@ -135,7 +135,7 @@ export class Airtouch5Wrapper {
       return;
     }
     const uuid = this.platform.api.hap.uuid.generate('AC'+this.AirtouchId+ac_number);
-    const platform_accessory = new this.platform.api.platformAccessory('AC '+ac_number, uuid);
+    const platform_accessory = new this.platform.api.platformAccessory(this.acs[ac_number].ac_ability.ac_name, uuid);
     const ac_accessory = new AirTouchACAccessory(
       this.platform,
       platform_accessory,
@@ -166,7 +166,7 @@ export class Airtouch5Wrapper {
       return;
     }
     const uuid = this.platform.api.hap.uuid.generate('Zone'+this.AirtouchId+ac_number+zone_number);
-    const platform_accessory = new this.platform.api.platformAccessory('Zone '+zone_number, uuid);
+    const platform_accessory = new this.platform.api.platformAccessory(this.zones[zone_number].zone_name, uuid);
     const zone_accessory:AirTouchZoneAccessory = new AirTouchZoneAccessory(this.platform,
       platform_accessory,
       this.AirtouchId,
