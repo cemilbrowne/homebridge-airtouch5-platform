@@ -90,6 +90,7 @@ export class Airtouch5Wrapper {
     }
     this.zones[zone_number].zone_status = zone_status;
     const ac_number = this.zones[zone_number].ac_number;
+    this.log.debug('Got a zone status:' + JSON.stringify(zone_status));
     if(this.zones[zone_number].registered === false) {
       this.registerZone(zone_number, ac_number);
     }
@@ -114,6 +115,7 @@ export class Airtouch5Wrapper {
       return;
     } else {
       result.ac_status = ac_status;
+      this.log.debug('Got an ac status:' + JSON.stringify(ac_status));
       if(result.registered === false) {
         this.registerAc(ac_number);
       }
