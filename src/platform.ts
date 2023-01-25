@@ -2,6 +2,7 @@ import { API, DynamicPlatformPlugin, Logger, PlatformConfig, Service, Characteri
 import { AirtouchAPI } from './api';
 import { EventEmitter } from 'events';
 import { Airtouch5Wrapper } from './airTouchWrapper';
+import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 
 
 
@@ -129,32 +130,8 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
 
   // configure cached accessories
   configureAccessory(accessory) {
-    this.log.info('Loading accessory from cache:', accessory.displayName);
-
-    // add the restored accessory to the accessories cache so we can track if it has already been registered
-    // this.zoneAccessories.push(accessory);
-
-    // if (accessory.displayName in this.units || accessory.displayName in this.zones) {
-    //   this.log('[' + accessory.displayName + '] is already configured');
-    //   return;
-    // }
-
-    // accessory.reacheable = false;
-    // accessory.log = this.log;
-    // accessory.api = this.airtouch;
-
-    // if (accessory.displayName.startsWith('AC')) {
-    //   this.setupACAccessory(accessory);
-    //   this.units[accessory.displayName] = accessory;
-    // } else if (accessory.displayName.startsWith('Zone') && accessory.displayName.endsWith('Thermostat')) {
-    //   this.setupThermoAccessory(accessory);
-    //   this.thermostats[accessory.displayName] = accessory;
-    // } else if (accessory.displayName.startsWith('Zone')) {
-    //   this.setupZoneAccessory(accessory);
-    //   this.zones[accessory.displayName] = accessory;
-    // }
-
-    // this.log('[' + accessory.displayName + '] was restored from cache and should be reachable');
+    this.log.debug('Deleting cached accessories');
+    this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
   }
 }
 
