@@ -131,6 +131,7 @@ export class AirTouchACAccessory {
   }
 
   handleActiveSet(value) {
+    this.log.debug('AC Accessory: Setting active to '+value);
     switch(value) {
       case this.platform.Characteristic.Active.INACTIVE:
         this.api.acSetActive(+this.ac.ac_number, false);
@@ -147,12 +148,24 @@ export class AirTouchACAccessory {
   }
 
   updateAll() {
-    this.service.getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState)
+
+    this.service.getCharacteristic(this.platform.Characteristic.TargetHeaterCoolerState)
       .updateValue(this.handleTargetHeaterCoolerStateGet());
-    this.service.getCharacteristic(this.platform.Characteristic.CurrentHeatingCoolingState)
+    this.service.getCharacteristic(this.platform.Characteristic.CurrentHeaterCoolerState)
       .updateValue(this.handleCurrentHeaterCoolerStateGet());
     this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature)
       .updateValue(this.handleCurrentTemperatureGet());
+    this.service.getCharacteristic(this.platform.Characteristic.CoolingThresholdTemperature)
+      .updateValue(this.handleTargetTemperatureGet());
+    this.service.getCharacteristic(this.platform.Characteristic.HeatingThresholdTemperature)
+      .updateValue(this.handleTargetTemperatureGet());
+    this.service.getCharacteristic(this.platform.Characteristic.Name)
+      .updateValue(this.handleNameGet());
+    this.service.getCharacteristic(this.platform.Characteristic.Active)
+      .updateValue(this.handleActiveGet());
+    this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
+      .updateValue(this.handleRotationSpeedGet());
+
   }
 
   /**

@@ -88,6 +88,7 @@ export class AirTouchZoneAccessory {
     this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
       .onGet(this.handleRotationSpeedGet.bind(this));
     if(+this.zone.zone_status!.zone_has_sensor === 0) {
+      this.log.debug('Zone doesn\'t have a sensor: '+this.zone.zone_number);
       this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
         .onSet(this.handleRotationSpeedSet.bind(this)).setProps({
           minValue: 0,
@@ -109,6 +110,7 @@ export class AirTouchZoneAccessory {
   }
 
   handleRotationSpeedSet(value) {
+    this.log.debug('Zone setting rotation speed to: '+value);
     this.api.zoneSetPercentage(+this.zone.zone_number, value);
   }
 
@@ -128,6 +130,7 @@ export class AirTouchZoneAccessory {
   }
 
   handleActiveSet(value) {
+    this.log.debug('Zone setting active to: '+value);
     switch(value) {
       case this.platform.Characteristic.Active.INACTIVE:
         this.api.zoneSetActive(+this.zone.zone_number, false);
@@ -263,6 +266,7 @@ export class AirTouchZoneAccessory {
    * Handle requests to set the "Target Heater-Cooler State" characteristic
    */
   handleTargetHeatingCoolingStateSet(value) {
+    this.log.debug('Zone setting target cooling state to to: '+value);
     const zone_number = this.zone.zone_number;
     switch(value) {
       case this.platform.Characteristic.TargetHeaterCoolerState.COOL:
@@ -308,6 +312,7 @@ export class AirTouchZoneAccessory {
    * Handle requests to get the current value of the "Current Temperature" characteristic
    */
   handleTargetTemperatureSet(value) {
+    this.log.debug('Zone setting target temperature to: '+value);
     if(+this.zone.zone_status!.zone_has_sensor === 1) {
       this.api.zoneSetTargetTemperature(+this.zone.zone_number, +value);
     } else {

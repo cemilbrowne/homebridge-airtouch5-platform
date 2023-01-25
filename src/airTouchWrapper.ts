@@ -124,6 +124,7 @@ export class Airtouch5Wrapper {
   }
 
   createAc(ac_number: number, ac_ability: AcAbility) {
+    this.log.debug('creating AC: '+ac_number+JSON.stringify(ac_ability));
     this.acs[ac_number] = {
       ac_number: ac_number,
       ac_ability: ac_ability,

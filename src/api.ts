@@ -219,6 +219,7 @@ export class AirtouchAPI {
     // assemble message
     const message = Buffer.from([...MAGIC.HEADER_BYTES, ...data, ...crc]);
     this.log.debug('API | Message to send:');
+    this.log.debug(message);
     // this.log(message);
     // // send message
     this.device.write(message);
@@ -478,6 +479,7 @@ export class AirtouchAPI {
     };
     this.log.debug('API | Setting zone state: ' + JSON.stringify(target));
     const data: Buffer = this.encode_zone_control(target);
+    this.log.debug('API | zoneActive, sending: ', data);
     const to_send = Buffer.from([0x00, 0x04, 0x00, 0x01, ...data]);
     const message = this.assemble_standard_message(MAGIC.SUBTYPE_ZONE_CTRL, to_send);
     this.send(message);
@@ -492,6 +494,7 @@ export class AirtouchAPI {
     };
     this.log.debug('API | Setting zone percentage: ' + JSON.stringify(target));
     const data: Buffer = this.encode_zone_control(target);
+    this.log.debug('API | zoneSetPercentage, sending: ', data);
     const to_send = Buffer.from([0x00, 0x04, 0x00, 0x01, ...data]);
     const message = this.assemble_standard_message(MAGIC.SUBTYPE_ZONE_CTRL, to_send);
     this.send(message);
