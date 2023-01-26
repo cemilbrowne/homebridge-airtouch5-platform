@@ -138,7 +138,7 @@ export class AirtouchAPI {
   }
 
   assemble_extended_message(data) {
-    this.log.debug('API | Assembling extended message to get AC Ability');
+    this.log.debug('API     | Assembling extended message to get information');
     const startbuf = Buffer.from([...MAGIC.ADDRESS_EXTENDED_BYTES, 0x01, MAGIC.MSGTYPE_EXTENDED]);
 
     const databuf = Buffer.from([...data]); // The data buffer, padded out
@@ -153,7 +153,7 @@ export class AirtouchAPI {
   }
 
   assemble_standard_message(type, data) {
-    this.log.debug('API | Assembling standard message with type ' + type.toString(16));
+    this.log.debug('API     | Assembling standard message with type ' + type.toString(16));
 
     // The start of the buffer contains some generic info.
 
@@ -175,15 +175,15 @@ export class AirtouchAPI {
     // this.log(data);
     const message_type = data.slice(11, 12); // Location of the message type in the return - see spec
     if(message_type[0] === MAGIC.EXT_SUBTYPE_AC_ABILITY) {
-      this.log.debug('API | Got Extended message - AC ABILITY');
+      this.log.debug('API     | Got Extended message - AC ABILITY');
       this.decode_ac_ability(data.slice(12, data.length-2));
     } else if (message_type[0] === MAGIC.EXT_SUBTYPE_AC_ERROR) {
-      this.log.debug('API | Got Extended message - AC ERROR');
+      this.log.debug('API     | Got Extended message - AC ERROR');
     } else if (message_type[0] === MAGIC.EXT_SUBTYPE_ZONE_NAME) {
-      this.log.debug('API | Got Extended message - ZONE NAMES');
+      this.log.debug('API     | Got Extended message - ZONE NAMES');
       this.decode_zone_names(data.slice(12, data.length-2));
     } else {
-      // this.log.debug('API | Got unknown extended message.  This isn\'t necessarily an error condition. ');
+      // this.log.debug('API     | Got unknown extended message.  This isn\'t necessarily an error condition. ');
       // this.log.debug(data);
     }
   }
@@ -196,13 +196,11 @@ export class AirtouchAPI {
     const repeat_data_length = data.slice(14, 16).readUInt16BE();
     const count_repeats = data.slice(16, 18).readUInt16BE();
     if(message_type[0] === MAGIC.SUBTYPE_ZONE_STAT) {
-      this.log.debug('API | Got Zone Status Message with ' + count_repeats + ' Zone(s)');
       this.decode_zones_status(count_repeats, repeat_data_length, data.slice(18, data.length-2));
     } else if (message_type[0] === MAGIC.SUBTYPE_AC_STAT) {
-      this.log.debug('API | Got AC Status Message with ' + count_repeats + ' AC(s)');
       this.decode_ac_status(count_repeats, repeat_data_length, data.slice(18, data.length-2));
     } else {
-      // this.log.debug('API | Got unknown standard message.  This isn\'t necessarily an error condition. ');
+      // this.log.debug('API     | Got unknown standard message.  This isn\'t necessarily an error condition. ');
       // this.log.debug(data);
     }
   }
@@ -210,7 +208,7 @@ export class AirtouchAPI {
   // send message to the Airtouch Touchpad Controller
   send(data) {
 
-    // this.log("API | Preparing and sending message containing:");
+    // this.log("API     | Preparing and sending message containing:");
     // this.log(data);
 
 
@@ -218,8 +216,8 @@ export class AirtouchAPI {
     crc.writeUInt16BE(this.crc16(data));
     // assemble message
     const message = Buffer.from([...MAGIC.HEADER_BYTES, ...data, ...crc]);
-    this.log.debug('API | Message to send:');
-    this.log.debug(message);
+    // this.log.debug('API     | Message to send:');
+    // this.log.debug(message);
     // this.log(message);
     // // send message
     this.device.write(message);
@@ -233,12 +231,12 @@ export class AirtouchAPI {
     byte2 = byte2 | ((this.isNull(unit.ac_mode, MAGIC.AC_MODES.KEEP)) << 4);
     const byte3 = (this.isNull(unit.ac_target_keep, MAGIC.AC_TARGET_TYPES.KEEP) << 4);
     const byte4 = this.isNull(unit.ac_target_value, MAGIC.AC_TARGET_DEFAULT);
+    this.log.debug('API     | Encoded AC Control message, unit:'+JSON.stringify(unit));
     return Buffer.from([byte1, byte2, byte3, byte4]);
   }
 
   // send command to change AC mode (OFF/HEATING/COOLING/AUTO)
   acSetActive(unit_number, active) {
-    this.log.debug('got in acSetActive, '+active);
     const target = {
       unit_number: unit_number,
       ac_power_state: active ? MAGIC.AC_POWER_STATES.ON : MAGIC.AC_POWER_STATES.OFF,
@@ -256,10 +254,8 @@ export class AirtouchAPI {
       ac_target_keep: MAGIC.AC_TARGET_TYPES.SET_VALUE,
       ac_target_value: (value*10)-100,
     };
-    this.log.info('trying to set temp to: '+value);
-    this.log.debug('API | Setting AC temperature to: ' + JSON.stringify(target));
+    this.log.debug('API     | Setting AC temperature to: ' + JSON.stringify(target));
     const data: Buffer = this.encode_ac_control(target);
-    this.log.info(data);
     const to_send = Buffer.from([0x00, 0x04, 0x00, 0x01, ...data]);
     const message = this.assemble_standard_message(MAGIC.SUBTYPE_AC_CTRL, to_send);
     this.send(message);
@@ -268,7 +264,7 @@ export class AirtouchAPI {
   // send command to change AC mode (OFF/HEATING/COOLING/AUTO)
   acSetTargetHeatingCoolingState(unit_number, state) {
     let target;
-    this.log.debug('got in acSetTargetHeatingCooling, '+state);
+    this.log.debug('API     | in acSetTargetHeatingCooling, target: '+state);
     switch (state) {
       case MAGIC.AC_TARGET_STATES.OFF: // OFF
         target = {
@@ -297,7 +293,7 @@ export class AirtouchAPI {
           ac_mode: MAGIC.AC_MODES.AUTO,
         };
     }
-    this.log.debug('API | Setting AC heating/cooling state to: ' + JSON.stringify(target));
+    this.log.debug('API     | Setting AC heating/cooling state to: ' + JSON.stringify(target));
     const data: Buffer = this.encode_ac_control(target);
     const to_send = Buffer.from([0x00, 0x04, 0x00, 0x01, ...data]);
     const message = this.assemble_standard_message(MAGIC.SUBTYPE_AC_CTRL, to_send);
@@ -311,7 +307,7 @@ export class AirtouchAPI {
       ac_unit_number: unit_number,
       ac_fan_speed: speed,
     };
-    this.log.debug('API | Setting AC fan speed ' + JSON.stringify(target));
+    this.log.debug('API     | Setting AC fan speed ' + JSON.stringify(target));
     const data = this.encode_ac_control(target);
     const to_send = Buffer.from([0x00, 0x04, 0x00, 0x01, ...data]);
     const message = this.assemble_standard_message(MAGIC.SUBTYPE_AC_CTRL, to_send);
@@ -336,7 +332,7 @@ export class AirtouchAPI {
   decode_ac_ability(data) {
     const length = data.length;
     const count_repeats = length/MAGIC.LENGTH_AC_ABILITY;
-    // this.log.debug('API | Got an AC ability message - count:', count_repeats);
+    // this.log.debug('API     | Got an AC ability message - count:', count_repeats);
     for (let i = 0; i < count_repeats; i++) {
       const unit = data.slice(i*MAGIC.LENGTH_AC_ABILITY, i*MAGIC.LENGTH_AC_ABILITY+MAGIC.LENGTH_AC_ABILITY);
       const ac_unit_number = unit[0];
@@ -453,6 +449,8 @@ export class AirtouchAPI {
         zone_has_sensor: zone_has_sensor,
         zone_has_spill: zone_has_spill,
       };
+      // For testing only
+      // to_push.zone_has_sensor = 0;
       this.emitter.emit('zone_status', to_push, this.AirtouchId);
     }
     if(this.got_zone_status === false) {
@@ -468,6 +466,7 @@ export class AirtouchAPI {
     byte2 = byte2 | ((this.isNull(zone.zone_target_type, MAGIC.ZONE_TARGET_TYPES.KEEP)) << 5);
     const byte3 = zone.zone_target || 0;
     const byte4 = 0;
+    this.log.debug('API     | Encoded Zone Control message, zone:'+JSON.stringify(zone));
     return Buffer.from([byte1, byte2, byte3, byte4]);
   }
 
@@ -477,9 +476,9 @@ export class AirtouchAPI {
       zone_number: zone_number,
       zone_power_state: active ? MAGIC.ZONE_POWER_STATES.ON : MAGIC.ZONE_POWER_STATES.OFF,
     };
-    this.log.debug('API | Setting zone state: ' + JSON.stringify(target));
+    this.log.debug('API     | Setting zone state: ' + JSON.stringify(target));
     const data: Buffer = this.encode_zone_control(target);
-    this.log.debug('API | zoneActive, sending: ', data);
+    this.log.debug('API     | zoneActive, sending: ', data);
     const to_send = Buffer.from([0x00, 0x04, 0x00, 0x01, ...data]);
     const message = this.assemble_standard_message(MAGIC.SUBTYPE_ZONE_CTRL, to_send);
     this.send(message);
@@ -492,9 +491,9 @@ export class AirtouchAPI {
       zone_target_type: MAGIC.ZONE_TARGET_TYPES.DAMPER,
       zone_target: value,
     };
-    this.log.debug('API | Setting zone percentage: ' + JSON.stringify(target));
+    this.log.debug('API     | Setting zone percentage: ' + JSON.stringify(target));
     const data: Buffer = this.encode_zone_control(target);
-    this.log.debug('API | zoneSetPercentage, sending: ', data);
+    this.log.debug('API     | zoneSetPercentage, sending: ', data);
     const to_send = Buffer.from([0x00, 0x04, 0x00, 0x01, ...data]);
     const message = this.assemble_standard_message(MAGIC.SUBTYPE_ZONE_CTRL, to_send);
     this.send(message);
@@ -507,7 +506,7 @@ export class AirtouchAPI {
       zone_target_type: MAGIC.ZONE_TARGET_TYPES.TEMPERATURE,
       zone_target: temp*10-100,
     };
-    this.log.debug('API | Setting target temperature: ' + JSON.stringify(target));
+    this.log.debug('API     | Setting target temperature: ' + JSON.stringify(target));
     const data: Buffer = this.encode_zone_control(target);
     const to_send = Buffer.from([0x00, 0x04, 0x00, 0x01, ...data]);
     const message = this.assemble_standard_message(MAGIC.SUBTYPE_ZONE_CTRL, to_send);
@@ -549,16 +548,16 @@ export class AirtouchAPI {
 
   // connect to Airtouch Touchpad Controller socket on tcp port 9004
   connect() {
-    this.log.debug('API | Beginning connection to: ' + this.ip);
+    this.log.debug('API     | Beginning connection to: ' + this.ip);
     this.device = new net.Socket();
     this.device.connect(9005, this.ip, () => {
-      this.log.debug('API | Connected to Airtouch');
+      this.log.debug('API     | Connected to Airtouch');
       // request information from Airtouch after connection
       this.GET_AC_ABILITY();
 
     });
     this.device.on('close', () => {
-      this.log.debug('API | Disconnected from Airtouch');
+      this.log.debug('API     | Disconnected from Airtouch');
     });
     // listener callback
     this.device.on('data', (data) => {
@@ -569,7 +568,7 @@ export class AirtouchAPI {
       const expected_header = Buffer.from([...MAGIC.HEADER_BYTES]);
 
       if(Buffer.compare(header, expected_header) !== 0) {
-        this.log.debug('API | Invalid header, discarding message.');
+        this.log.debug('API     | Invalid header, discarding message.');
       }
 
       if(address[0] === MAGIC.ADDRESS_STANDARD_BYTES[0]) {
@@ -577,18 +576,18 @@ export class AirtouchAPI {
       } else if(address[0] === MAGIC.ADDRESS_EXTENDED_BYTES[0]) {
         this.decode_extended_message(real_data);
       } else {
-        this.log.debug('API | Got unknown message');
+        this.log.debug('API     | Got unknown message');
         // this.log(real_data);
       }
     });
 
     // error handling to stop connection errors bringing down homebridge
     this.device.on('error', (err) => {
-      this.log.error('API | Connection Error: ' + err.message);
+      this.log.error('API     | Connection Error: ' + err.message);
       this.device.destroy(); //close the connection even though its already broken
       setTimeout(() => {
         if (!this.device.listening) { //only attempt reconnect if not already re-connected
-          this.log.debug('API | Attempting reconnect');
+          this.log.debug('API     | Attempting reconnect');
           this.emitter.emit('attempt_reconnect');
         }
       }, 10000);

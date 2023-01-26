@@ -3,6 +3,7 @@ import { AirtouchAPI } from './api';
 import { EventEmitter } from 'events';
 import { Airtouch5Wrapper } from './airTouchWrapper';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
+import { MAGIC } from './magic';
 
 
 
@@ -49,8 +50,18 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
     this.api.on('didFinishLaunching', () => {
       this.log.debug('Executed didFinishLaunching callback');
       for(let i = 0;i<this.accessories.length;i++) {
-        this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [this.accessories[i]]);
-        this.log.debug('Unregistering accessory. '+i);
+        let should_unregister = false;
+        if(this.accessories[i].context === undefined) {
+          should_unregister = true;
+        } else {
+          if(this.accessories[i].context.zone_or_ac === undefined) {
+            should_unregister = true;
+          }
+        }
+        if(should_unregister === true) {
+          this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [this.accessories[i]]);
+          this.log.debug('Unregistering accessory. '+i);
+        }
       }
       // run the method to discover / register your devices as accessories
       this.discoverDevices();
@@ -136,8 +147,32 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
 
   // configure cached accessories
   configureAccessory(accessory) {
-    this.log.debug('Deleting cached accessories: '+this.accessories.length);
     this.accessories.push(accessory);
+  }
+
+  findAccessory(AirtouchId: string, ac_number: number, zone_or_ac: string, zone_number?: number): PlatformAccessory | undefined {
+
+    for(let i = 0; i<this.accessories.length;i++) {
+      const my_context = this.accessories[i].context;
+      if(my_context.AirtouchId !== undefined && my_context.AirtouchId === AirtouchId) {
+
+        if(my_context.ac_number !== undefined && +my_context.ac_number === ac_number) {
+
+          if(zone_or_ac === MAGIC.ZONE_OR_AC.AC && my_context.zone_or_ac === MAGIC.ZONE_OR_AC.AC) {
+
+            return this.accessories[i];
+          }
+          if(zone_or_ac === MAGIC.ZONE_OR_AC.ZONE && my_context.zone_or_ac === MAGIC.ZONE_OR_AC.ZONE) {
+
+            if(my_context.zone_number !== undefined && +my_context.zone_number === zone_number) {
+
+              return this.accessories[i];
+            }
+          }
+        }
+      }
+    }
+    return undefined;
   }
 }
 

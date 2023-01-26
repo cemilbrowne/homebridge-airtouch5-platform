@@ -5,6 +5,7 @@ import { AirTouchACAccessory } from './platformACAccessory';
 import { EventEmitter } from 'events';
 import { AirtouchPlatform } from './platform';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
+import { MAGIC } from './magic';
 
 export interface AC {
     ac_number: number;
@@ -66,7 +67,7 @@ export class Airtouch5Wrapper {
       this.createAc(ac_number, ac_ability);
       this.initialiseZonesForAc(ac_number, ac_ability);
     } else {
-      this.log.debug('Received duplicate AC Capability - this plugin doesn\'t support changing AC abilities', ac_number);
+      this.log.debug('ATWRAP  | Received duplicate AC Capability - this plugin doesn\'t support changing AC abilities', ac_number);
     }
   }
 
@@ -83,9 +84,10 @@ export class Airtouch5Wrapper {
   }
 
   AddUpdateZoneStatus(zone_status: ZoneStatus) {
+    this.log.debug('ATWRAP  | Updating Zone status: '+JSON.stringify(zone_status));
     const zone_number = +zone_status.zone_number;
     if(this.zones[zone_number] === undefined) {
-      this.log.debug('Got an updated zone status, but zone hasn\'t been initialised yet number: '+zone_number);
+      this.log.debug('ATWRAP  | Got an updated zone status, but zone hasn\'t been initialised yet number: '+zone_number);
       return;
     }
     this.zones[zone_number].zone_status = zone_status;
@@ -98,7 +100,7 @@ export class Airtouch5Wrapper {
   AddZoneName(in_zone_number, zone_name) {
     const zone_number = +in_zone_number;
     if(this.zones[zone_number].zone_name === undefined) {
-      this.log.debug('Got an updated zone name, but zone hasn\'t been initialised yet number: '+zone_number);
+      this.log.debug('ATWRAP  | Got an updated zone name, but zone hasn\'t been initialised yet number: '+zone_number);
       return;
     } else {
       this.zones[zone_number].zone_name = zone_name;
@@ -109,10 +111,11 @@ export class Airtouch5Wrapper {
   }
 
   AddUpdateAcStatus(ac_status: AcStatus) {
+    this.log.debug('ATWRAP  | Updating AC status: '+JSON.stringify(ac_status));
     const ac_number = +ac_status.ac_unit_number;
     const result = this.acs[ac_number];
     if(result === undefined) {
-      this.log.debug('Error condition adding AC Status - no existing AC with abilities with num: ', ac_number);
+      this.log.debug('ATWRAP  | Error condition adding AC Status - no existing AC with abilities with num: ', ac_number);
       return;
     } else {
       result.ac_status = ac_status;
@@ -124,7 +127,7 @@ export class Airtouch5Wrapper {
   }
 
   createAc(ac_number: number, ac_ability: AcAbility) {
-    this.log.debug('creating AC: '+ac_number+JSON.stringify(ac_ability));
+    this.log.debug('ATWRAP  | Creating AC: '+ac_number+JSON.stringify(ac_ability));
     this.acs[ac_number] = {
       ac_number: ac_number,
       ac_ability: ac_ability,
@@ -132,29 +135,10 @@ export class Airtouch5Wrapper {
     };
   }
 
-  registerAc(ac_number: number) {
-    if(this.acs[ac_number].ac_status === undefined) {
-      this.log.error('Attempting to register an AC without a status.');
-      return;
-    }
-    const uuid = this.platform.api.hap.uuid.generate('AC '+this.AirtouchId+ac_number);
-    const platform_accessory = new this.platform.api.platformAccessory(this.acs[ac_number].ac_ability.ac_name, uuid);
-    const ac_accessory = new AirTouchACAccessory(
-      this.platform,
-      platform_accessory,
-      this.AirtouchId,
-      ac_number,
-      this.acs[ac_number],
-      this.zones,
-      this.log,
-      this.api,
-    );
-    this.platform.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [platform_accessory]);
-    this.acs[ac_number].ac_accessory = ac_accessory;
-    this.acs[ac_number].registered = true;
-  }
+
 
   createZone(zone_number: number, ac_number: number) {
+    this.log.debug('ATWRAP  | Creating Zone: ');
     this.zones[zone_number] = {
       zone_number: zone_number,
       ac_number: ac_number,
@@ -165,11 +149,19 @@ export class Airtouch5Wrapper {
 
   registerZone(zone_number: number, ac_number: number) {
     if(this.zones[zone_number].zone_status === undefined) {
-      this.log.error('Attempting to register a Zone without a status.');
+      this.log.error('ATWRAP  | Attempting to register a Zone without a status.');
       return;
     }
     const uuid = this.platform.api.hap.uuid.generate('Zone '+this.AirtouchId+ac_number+zone_number);
-    const platform_accessory = new this.platform.api.platformAccessory(this.zones[zone_number].zone_name, uuid);
+    let platform_accessory = this.platform.findAccessory(this.AirtouchId, ac_number, MAGIC.ZONE_OR_AC.ZONE, zone_number);
+    if(platform_accessory === undefined) {
+      platform_accessory = new this.platform.api.platformAccessory(this.zones[zone_number].zone_name, uuid);
+      platform_accessory.context.zone_number = zone_number;
+      platform_accessory.context.ac_number = ac_number;
+      platform_accessory.context.AirtouchId = this.AirtouchId;
+      platform_accessory.context.zone_or_ac = MAGIC.ZONE_OR_AC.ZONE;
+      this.platform.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [platform_accessory]);
+    }
     const zone_accessory:AirTouchZoneAccessory = new AirTouchZoneAccessory(this.platform,
       platform_accessory,
       this.AirtouchId,
@@ -179,9 +171,38 @@ export class Airtouch5Wrapper {
       this.log,
       this.api,
     );
-    this.platform.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [platform_accessory]);
     this.zones[zone_number].zone_accessory = zone_accessory;
     this.zones[zone_number].registered = true;
+  }
+
+  registerAc(ac_number: number) {
+    if(this.acs[ac_number].ac_status === undefined) {
+      this.log.error('ATWRAP  | Attempting to register an AC without a status.');
+      return;
+    }
+    this.log.debug('ATWRAP  | Register AC being called for acnumber: '+ac_number);
+    const uuid = this.platform.api.hap.uuid.generate('AC '+this.AirtouchId+ac_number);
+    let platform_accessory = this.platform.findAccessory(this.AirtouchId, ac_number, MAGIC.ZONE_OR_AC.AC);
+    if(platform_accessory === undefined) {
+      platform_accessory = new this.platform.api.platformAccessory(this.acs[ac_number].ac_ability.ac_name, uuid);
+      platform_accessory.context.ac_number = ac_number;
+      platform_accessory.context.AirtouchId = this.AirtouchId;
+      platform_accessory.context.zone_or_ac = MAGIC.ZONE_OR_AC.AC;
+      this.platform.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [platform_accessory]);
+    }
+    const ac_accessory = new AirTouchACAccessory(
+      this.platform,
+      platform_accessory,
+      this.AirtouchId,
+      ac_number,
+      this.acs[ac_number],
+      this.zones,
+      this.log,
+      this.api,
+    );
+
+    this.acs[ac_number].ac_accessory = ac_accessory;
+    this.acs[ac_number].registered = true;
   }
 
 }

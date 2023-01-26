@@ -131,7 +131,7 @@ export class AirTouchACAccessory {
   }
 
   handleActiveSet(value) {
-    this.log.debug('AC Accessory: Setting active to '+value);
+    this.log.debug('ACACC   | AC Accessory: Setting active to '+value);
     switch(value) {
       case this.platform.Characteristic.Active.INACTIVE:
         this.api.acSetActive(+this.ac.ac_number, false);
@@ -217,11 +217,11 @@ export class AirTouchACAccessory {
         return this.platform.Characteristic.CurrentHeaterCoolerState.HEATING;
         break;
       case 2:
-        this.log.info('AC is set to DRY mode.  This is currently unhandled.  Reporting it as cool instead. ');
+        this.log.info('ACACC   | AC is set to DRY mode.  This is currently unhandled.  Reporting it as cool instead. ');
         return this.platform.Characteristic.CurrentHeaterCoolerState.COOLING;
         break;
       case 3:
-        this.log.info('AC is set to FAN mode.  This is currently unhandled.  Reporting it as cool instead. ');
+        this.log.info('ACACC   | AC is set to FAN mode.  This is currently unhandled.  Reporting it as cool instead. ');
         return this.platform.Characteristic.CurrentHeaterCoolerState.COOLING;
         break;
       case 4:
@@ -234,7 +234,7 @@ export class AirTouchACAccessory {
         return this.platform.Characteristic.CurrentHeaterCoolerState.COOLING;
         break;
       default:
-        this.log.info('Unhandled ac_mode in getCurrentHeatingCoolingState. Returning off as fail safe.');
+        this.log.info('ACACC   | Unhandled ac_mode in getCurrentHeatingCoolingState. Returning off as fail safe.');
         return this.platform.Characteristic.CurrentHeaterCoolerState.IDLE;
         break;
     }
@@ -255,11 +255,11 @@ export class AirTouchACAccessory {
         return this.platform.Characteristic.TargetHeaterCoolerState.HEAT;
         break;
       case 2:
-        this.log.info('AC is set to DRY mode.  This is currently unhandled.  Reporting it as cool instead. ');
+        this.log.info('ACACC   | AC is set to DRY mode.  This is currently unhandled.  Reporting it as cool instead. ');
         return this.platform.Characteristic.TargetHeaterCoolerState.COOL;
         break;
       case 3:
-        this.log.info('AC is set to FAN mode.  This is currently unhandled.  Reporting it as cool instead. ');
+        this.log.info('ACACC   | AC is set to FAN mode.  This is currently unhandled.  Reporting it as cool instead. ');
         return this.platform.Characteristic.TargetHeaterCoolerState.COOL;
         break;
       case 4:
@@ -272,7 +272,7 @@ export class AirTouchACAccessory {
         return this.platform.Characteristic.TargetHeaterCoolerState.COOL;
         break;
       default:
-        this.log.info('Unhandled ac_mode in getTargetACHeatingCooling. Returning auto as fail safe.');
+        this.log.info('ACACC   | Unhandled ac_mode in getTargetACHeatingCooling. Returning auto as fail safe.');
         return this.platform.Characteristic.TargetHeaterCoolerState.AUTO;
         break;
     }

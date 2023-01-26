@@ -105,4 +105,9 @@ export class MAGIC {
   static ATTR_CURRENT_TEMP = 'zone_current_temp';
   static ATTR_TARGET_TEMP = 'zone_target_temp';
   static ATTR_AC_ACTIVE = 'ac_active';
+
+  static ZONE_OR_AC = {
+    ZONE: 'Zone',
+    AC: 'AC',
+  };
 }

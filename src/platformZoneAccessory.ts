@@ -88,7 +88,7 @@ export class AirTouchZoneAccessory {
     this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
       .onGet(this.handleRotationSpeedGet.bind(this));
     if(+this.zone.zone_status!.zone_has_sensor === 0) {
-      this.log.debug('Zone doesn\'t have a sensor: '+this.zone.zone_number);
+      this.log.debug('ZONEACC | Zone doesn\'t have a sensor: '+this.zone.zone_number);
       this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
         .onSet(this.handleRotationSpeedSet.bind(this)).setProps({
           minValue: 0,
@@ -110,7 +110,7 @@ export class AirTouchZoneAccessory {
   }
 
   handleRotationSpeedSet(value) {
-    this.log.debug('Zone setting rotation speed to: '+value);
+    this.log.debug('ZONEACC | Zone setting rotation speed to: '+value);
     this.api.zoneSetPercentage(+this.zone.zone_number, value);
   }
 
@@ -130,15 +130,19 @@ export class AirTouchZoneAccessory {
   }
 
   handleActiveSet(value) {
-    this.log.debug('Zone setting active to: '+value);
-    switch(value) {
-      case this.platform.Characteristic.Active.INACTIVE:
-        this.api.zoneSetActive(+this.zone.zone_number, false);
-        break;
-      case this.platform.Characteristic.Active.ACTIVE:
-        this.api.zoneSetActive(+this.zone.zone_number, true);
-        break;
+    this.log.debug('ZONEACC | Zone setting active to: '+value);
+    const zone_power_status = this.zone.zone_status!.zone_power_state;
+    if(zone_power_status !== value) {
+      switch(value) {
+        case this.platform.Characteristic.Active.INACTIVE:
+          this.api.zoneSetActive(+this.zone.zone_number, false);
+          break;
+        case this.platform.Characteristic.Active.ACTIVE:
+          this.api.zoneSetActive(+this.zone.zone_number, true);
+          break;
+      }
     }
+    this.log.debug('ZONEACC | No change to active state');
   }
 
 
@@ -201,11 +205,11 @@ export class AirTouchZoneAccessory {
           return this.platform.Characteristic.CurrentHeaterCoolerState.HEATING;
           break;
         case 2:
-          this.log.info('AC is set to DRY mode.  This is currently unhandled.  Reporting it as cool instead. ');
+          this.log.info('ZONEACC | AC is set to DRY mode.  This is currently unhandled.  Reporting it as cool instead. ');
           return this.platform.Characteristic.CurrentHeaterCoolerState.COOLING;
           break;
         case 3:
-          this.log.info('AC is set to FAN mode.  This is currently unhandled.  Reporting it as cool instead. ');
+          this.log.info('ZONEACC | AC is set to FAN mode.  This is currently unhandled.  Reporting it as cool instead. ');
           return this.platform.Characteristic.CurrentHeaterCoolerState.COOLING;
           break;
         case 4:
@@ -218,7 +222,7 @@ export class AirTouchZoneAccessory {
           return this.platform.Characteristic.CurrentHeaterCoolerState.COOLING;
           break;
         default:
-          this.log.info('Unhandled ac_mode in getCurrentHeatingCoolingState. Returning off as fail safe.');
+          this.log.info('ZONEACC | Unhandled ac_mode in getCurrentHeatingCoolingState. Returning off as fail safe.');
           return this.platform.Characteristic.CurrentHeaterCoolerState.INACTIVE;
           break;
       }
@@ -239,11 +243,11 @@ export class AirTouchZoneAccessory {
         return this.platform.Characteristic.TargetHeaterCoolerState.HEAT;
         break;
       case 2:
-        this.log.info('AC is set to DRY mode.  This is currently unhandled.  Reporting it as cool instead. ');
+        this.log.info('ZONEACC | AC is set to DRY mode.  This is currently unhandled.  Reporting it as cool instead. ');
         return this.platform.Characteristic.TargetHeaterCoolerState.COOL;
         break;
       case 3:
-        this.log.info('AC is set to FAN mode.  This is currently unhandled.  Reporting it as cool instead. ');
+        this.log.info('ZONEACC | AC is set to FAN mode.  This is currently unhandled.  Reporting it as cool instead. ');
         return this.platform.Characteristic.TargetHeaterCoolerState.COOL;
         break;
       case 4:
@@ -256,7 +260,7 @@ export class AirTouchZoneAccessory {
         return this.platform.Characteristic.TargetHeaterCoolerState.COOL;
         break;
       default:
-        this.log.info('Unhandled ac_mode in getTargetHeatingCoolingState. Returning auto as fail safe.');
+        this.log.info('ZONEACC | Unhandled ac_mode in getTargetHeatingCoolingState. Returning auto as fail safe.');
         return this.platform.Characteristic.TargetHeaterCoolerState.AUTO;
         break;
     }
@@ -266,19 +270,16 @@ export class AirTouchZoneAccessory {
    * Handle requests to set the "Target Heater-Cooler State" characteristic
    */
   handleTargetHeatingCoolingStateSet(value) {
-    this.log.debug('Zone setting target cooling state to to: '+value);
-    const zone_number = this.zone.zone_number;
+    this.log.debug('ZONEACC | Zone setting target cooling state to to: '+value);
+    this.handleActiveSet(this.platform.Characteristic.Active.Active);
     switch(value) {
       case this.platform.Characteristic.TargetHeaterCoolerState.COOL:
-        this.api.zoneSetActive(zone_number, true);
         this.api.acSetTargetHeatingCoolingState(this.ac.ac_number, MAGIC.AC_TARGET_STATES.COOL);
         break;
       case this.platform.Characteristic.TargetHeatingCoolingState.HEAT:
-        this.api.zoneSetActive(zone_number, true);
         this.api.acSetTargetHeatingCoolingState(this.ac.ac_number, MAGIC.AC_TARGET_STATES.HEAT);
         break;
       case this.platform.Characteristic.TargetHeatingCoolingState.AUTO:
-        this.api.zoneSetActive(zone_number, true);
         this.api.acSetTargetHeatingCoolingState(this.ac.ac_number, MAGIC.AC_TARGET_STATES.AUTO);
         break;
     }
@@ -312,12 +313,12 @@ export class AirTouchZoneAccessory {
    * Handle requests to get the current value of the "Current Temperature" characteristic
    */
   handleTargetTemperatureSet(value) {
-    this.log.debug('Zone setting target temperature to: '+value);
+    this.log.debug('ZONEACC | Zone setting target temperature to: '+value);
     if(+this.zone.zone_status!.zone_has_sensor === 1) {
       this.api.zoneSetTargetTemperature(+this.zone.zone_number, +value);
     } else {
       this.api.acSetTargetTemperature(+this.ac.ac_number, +value);
     }
-    this.log.debug('Setting target temperature:'+value);
+    this.log.debug('ZONEACC | Setting target temperature:'+value);
   }
 }
