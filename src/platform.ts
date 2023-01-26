@@ -25,7 +25,7 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
     public readonly api: API,
   ) {
     this.airtouch_devices = new Array<Airtouch5Wrapper>();
-    this.log.debug('Starting to set up Airtouch5 platform.');
+    this.log.debug('PLAT    | Starting to set up Airtouch5 platform.');
     this.emitter = new EventEmitter();
     this.accessories = new Array<PlatformAccessory>();
     // initialize accessory lists
@@ -48,7 +48,7 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
     // this.api.connect(config.ip_address);
 
     this.api.on('didFinishLaunching', () => {
-      this.log.debug('Executed didFinishLaunching callback');
+      this.log.debug('PLAT    | Executed didFinishLaunching callback');
       for(let i = 0;i<this.accessories.length;i++) {
         let should_unregister = false;
         if(this.accessories[i].context === undefined) {
@@ -60,7 +60,7 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
         }
         if(should_unregister === true) {
           this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [this.accessories[i]]);
-          this.log.debug('Unregistering accessory. '+i);
+          this.log.debug('PLAT    | Unregistering accessory. '+i);
         }
       }
       // run the method to discover / register your devices as accessories
@@ -84,12 +84,16 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
   discoverDevices() {
 
     if (this.config.units?.length) {
-      this.log.debug('Defined units in config, not doing automated discovery');
+      this.log.debug('PLAT    | Defined units in config, not doing automated discovery');
       this.config.units.forEach(ip=>this.addAirtouchDevice(ip, 'console-'+ip, 'airtouchid-'+ip, 'device-'+ip));
       return;
     }
     this.emitter.on('found_devices', (ip: string, consoleId: string, AirtouchId: string, deviceName: string) => {
-      this.log.debug('Got an AirTouch5 device from dicovery.  Adding it and finding zones: ', ip, consoleId, AirtouchId, deviceName);
+      this.log.debug('PLAT    | Got an AirTouch5 device from dicovery.  Adding it and finding zones: ',
+        ip,
+        consoleId,
+        AirtouchId,
+        deviceName);
       this.addAirtouchDevice(ip, consoleId, AirtouchId, deviceName);
     });
 
@@ -102,9 +106,9 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
     if(result === undefined) {
       const newAirtouch = new Airtouch5Wrapper(in_ip, consoleId, in_AirtouchId, deviceName, this.log, this.emitter, this);
       this.airtouch_devices.push(newAirtouch);
-      this.log.debug('Did not find this ip, so added it: ', in_ip);
+      this.log.debug('PLAT    | Did not find this ip, so added it: ', in_ip);
     } else {
-      this.log.debug('IP Address was already in array: ', in_ip);
+      this.log.debug('PLAT    | IP Address was already in array: ', in_ip);
     }
 
   }
@@ -112,7 +116,7 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
   onACStatusNotification(ac_status, in_AirtouchId) {
     const result = this.airtouch_devices.find(({ AirtouchId }) => AirtouchId === in_AirtouchId);
     if(result === undefined) {
-      this.log.debug('Error condition in AC Status, no AirTouch ID found', in_AirtouchId);
+      this.log.debug('PLAT    | Error condition in AC Status, no AirTouch ID found', in_AirtouchId);
     } else {
       result.AddUpdateAcStatus(ac_status);
     }
@@ -121,7 +125,7 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
   onZoneStatusNotification(zone_status, in_AirtouchId) {
     const result = this.airtouch_devices.find(({ AirtouchId }) => AirtouchId === in_AirtouchId);
     if(result === undefined) {
-      this.log.debug('Error condition in Zone Status, no AirTouch ID found', in_AirtouchId);
+      this.log.debug('PLAT    | Error condition in Zone Status, no AirTouch ID found', in_AirtouchId);
     } else {
       result.AddUpdateZoneStatus(zone_status);
     }
@@ -130,7 +134,7 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
   onZoneNameNotification(zone_number, zone_name, in_AirtouchId) {
     const result = this.airtouch_devices.find(({ AirtouchId }) => AirtouchId === in_AirtouchId);
     if(result === undefined) {
-      this.log.debug('Error condition in Zone Status, no AirTouch ID found', in_AirtouchId);
+      this.log.debug('PLAT    | Error condition in Zone Status, no AirTouch ID found', in_AirtouchId);
     } else {
       result.AddZoneName(zone_number, zone_name);
     }
@@ -139,7 +143,7 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
   onACAbilityNotification(ac_ability, in_AirtouchId) {
     const result = this.airtouch_devices.find(({ AirtouchId }) => AirtouchId === in_AirtouchId);
     if(result === undefined) {
-      this.log.debug('Error condition in AC Ability, no AirTouch ID found', in_AirtouchId);
+      this.log.debug('PLAT    | Error condition in AC Ability, no AirTouch ID found', in_AirtouchId);
     } else {
       result.AddAcAbility(ac_ability);
     }

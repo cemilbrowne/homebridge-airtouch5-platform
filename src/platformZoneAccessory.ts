@@ -8,8 +8,10 @@ export class AirTouchZoneAccessory {
   private service: Service;
   AirtouchId;
   ZoneNumber;
-  minTemp: number;
-  maxTemp: number;
+  minCool: number;
+  maxCool: number;
+  minHeat: number;
+  maxHeat: number;
   step: number;
   private ac: AC;
   private zone: Zone;
@@ -28,13 +30,16 @@ export class AirTouchZoneAccessory {
   ) {
     this.AirtouchId = AirtouchId;
     this.ZoneNumber = ZoneNumber;
-    this.minTemp = 0;
-    this.maxTemp = 35;
+
     this.step = 1;
     this.ac = ac;
     this.zone = zone;
     this.log = log;
     this.api = api;
+    this.minCool = +ac.ac_ability.ac_min_cool;
+    this.maxCool = +ac.ac_ability.ac_max_cool;
+    this.minHeat = +ac.ac_ability.ac_min_heat;
+    this.maxHeat = +ac.ac_ability.ac_max_heat;
     this.accessory.getService(this.platform.Service.AccessoryInformation)
       ?.setCharacteristic(
         this.platform.Characteristic.Manufacturer,
@@ -73,29 +78,26 @@ export class AirTouchZoneAccessory {
     this.service.getCharacteristic(this.platform.Characteristic.CoolingThresholdTemperature)
       .onGet(this.handleTargetTemperatureGet.bind(this))
       .onSet(this.handleTargetTemperatureSet.bind(this)).setProps({
-        minValue: this.minTemp,
-        maxValue: this.maxTemp,
+        minValue: this.minCool,
+        maxValue: this.maxCool,
         minStep: this.step,
       });
     this.service.getCharacteristic(this.platform.Characteristic.HeatingThresholdTemperature)
       .onGet(this.handleTargetTemperatureGet.bind(this))
       .onSet(this.handleTargetTemperatureSet.bind(this)).setProps({
-        minValue: this.minTemp,
-        maxValue: this.maxTemp,
+        minValue: this.minHeat,
+        maxValue: this.maxHeat,
         minStep: this.step,
       });
 
     this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
-      .onGet(this.handleRotationSpeedGet.bind(this));
-    if(+this.zone.zone_status!.zone_has_sensor === 0) {
-      this.log.debug('ZONEACC | Zone doesn\'t have a sensor: '+this.zone.zone_number);
-      this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
-        .onSet(this.handleRotationSpeedSet.bind(this)).setProps({
-          minValue: 0,
-          maxValue: 100,
-          minStep: 5,
-        });
-    }
+      .onGet(this.handleRotationSpeedGet.bind(this))
+      .onSet(this.handleRotationSpeedSet.bind(this)).setProps({
+        minValue: 0,
+        maxValue: 100,
+        minStep: 5,
+      });
+
   }
 
   updateStatus(zone: Zone, ac: AC) {

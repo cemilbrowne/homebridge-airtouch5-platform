@@ -91,7 +91,7 @@ export class AirtouchAPI {
         const AirtouchId = messages[3];
         const deviceName = messages[4];
 
-        log.debug('API DISCOVERY | Found device on ip: '+ip+' with consoleId: '+consoleId);
+        log.debug('APIDISC | Found device on ip: '+ip+' with consoleId: '+consoleId);
         myemitter.emit('found_devices', ip, consoleId, AirtouchId, deviceName);
       }
     });
@@ -100,14 +100,14 @@ export class AirtouchAPI {
     socket.on('listening', () => {
       socket.setBroadcast(true);
       setTimeout(() => {
-        log.debug('API DISCOVERY | Hit timeout looking for devices, closing socket.');
+        log.debug('APIDISC | Hit timeout looking for devices, closing socket.');
         try {
           socket.close();
         } catch (err) {
           log.debug('Unable to close socket.');
         }
       }, 5000);
-      log.debug('API DISCOVERY | Sending broadcast to search for devices.');
+      log.debug('APIDISC | Sending broadcast to search for devices.');
       socket.send(message, 0, message.length, 49005, '255.255.255.255');
     });
   }
