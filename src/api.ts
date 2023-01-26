@@ -488,6 +488,7 @@ export class AirtouchAPI {
   zoneSetPercentage(zone_number, value) {
     const target = {
       zone_number: zone_number,
+      zone_power_state: MAGIC.ZONE_POWER_STATES.ON,
       zone_target_type: MAGIC.ZONE_TARGET_TYPES.DAMPER,
       zone_target: value,
     };
@@ -503,6 +504,7 @@ export class AirtouchAPI {
   zoneSetTargetTemperature(zone_number: number, temp: number) {
     const target = {
       zone_number: zone_number,
+      zone_power_state: MAGIC.ZONE_POWER_STATES.ON,
       zone_target_type: MAGIC.ZONE_TARGET_TYPES.TEMPERATURE,
       zone_target: temp*10-100,
     };
