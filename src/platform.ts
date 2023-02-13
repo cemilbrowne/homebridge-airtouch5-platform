@@ -78,7 +78,9 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
     this.emitter.on('zone_name', (zone_number, zone_name, in_AirtouchId) => {
       this.onZoneNameNotification(zone_number, zone_name, in_AirtouchId);
     });
-
+    this.emitter.on('attempt_reconnect', (in_AirtouchId) => {
+      this.onAttemptReconnect(in_AirtouchId);
+    });
   }
 
   discoverDevices() {
@@ -137,6 +139,15 @@ export class AirtouchPlatform implements DynamicPlatformPlugin {
       this.log.debug('PLAT    | Error condition in Zone Status, no AirTouch ID found', in_AirtouchId);
     } else {
       result.AddZoneName(zone_number, zone_name);
+    }
+  }
+
+  onAttemptReconnect(in_AirtouchId) {
+    const result = this.airtouch_devices.find(({ AirtouchId }) => AirtouchId === in_AirtouchId);
+    if(result === undefined) {
+      this.log.debug('PLAT    | Attempt reconnect message, but no AirTouch ID found', in_AirtouchId);
+    } else {
+      result.AttemptReconnect();
     }
   }
 

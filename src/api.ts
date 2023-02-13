@@ -590,7 +590,7 @@ export class AirtouchAPI {
       setTimeout(() => {
         if (!this.device.listening) { //only attempt reconnect if not already re-connected
           this.log.debug('API     | Attempting reconnect');
-          this.emitter.emit('attempt_reconnect');
+          this.emitter.emit('attempt_reconnect', this.AirtouchId);
         }
       }, 10000);
     });

@@ -110,6 +110,10 @@ export class Airtouch5Wrapper {
     }
   }
 
+  AttemptReconnect() {
+    this.api.connect();
+  }
+
   AddUpdateAcStatus(ac_status: AcStatus) {
     this.log.debug('ATWRAP  | Updating AC status: '+JSON.stringify(ac_status));
     const ac_number = +ac_status.ac_unit_number;
