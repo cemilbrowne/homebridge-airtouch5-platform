@@ -1,6 +1,7 @@
 
 # AirTouch 5 Homebridge support
-This plugin is designed to support an AirTouch 5 system.  It works for me! 
+This plugin is designed to support an AirTouch 5 system.  It works for me with multiple AirTouch systems.
+
 ## Background
 
   
@@ -21,9 +22,6 @@ I'd recommend that you make sure you're setup correctly on the Airtouch.  Go in 
 
   
 * AirTouch 5 supports dry/fan modes.  This plugin doesn't, because I can't figure out how Homekit would.  
-* Version 1 of this plugin doesn't support fan level - you have to set this manually on the controller. 
-* This plugin doesn't directly expose the AC unit.  It exposes the zones.  If you set one zone on an AC to heat, for example, they'll all be set to heat.  Each zone has independent temperature and on/off control, but they set mode as a group.  
-
   
 
 ## Installation
