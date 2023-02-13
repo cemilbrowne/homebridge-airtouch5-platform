@@ -102,7 +102,10 @@ export class AirTouchACAccessory {
 
   handleRotationSpeedGet() {
     const ac_status = this.ac.ac_status!;
-    return (+ac_status.ac_fan_speed-1)*33;
+    if(+ac_status.ac_fan_speed > 0) {
+      return (+ac_status.ac_fan_speed-1)*33;
+    }
+    return 0;
   }
 
   handleRotationSpeedSet(value) {
