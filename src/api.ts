@@ -57,6 +57,7 @@ export class AirtouchAPI {
   log;
   device;
   emitter;
+  lastDataTime;
   got_ac_ability: boolean;
   got_zone_status: boolean;
   public readonly ip: string;
@@ -76,8 +77,10 @@ export class AirtouchAPI {
     this.consoleId = consoleId;
     this.AirtouchId = AirtouchId;
     this.deviceName = deviceName;
+    this.lastDataTime = Date.now();
     this.got_ac_ability = false;
     this.got_zone_status = false;
+
   }
 
   static async discoverDevices(log, myemitter: EventEmitter) {
@@ -547,8 +550,18 @@ export class AirtouchAPI {
     }
   }
 
+  checkLastDateReceived() {
+    const currDate = Date.now();
+    const diff = Math.floor((currDate - this.lastDataTime)/1000);
+    if(diff > 120) {
+      this.log.debug('API     | Went past the expected time to receive a message. This may not be an error message if the AC is off.');
+      this.device.destroy();
+      this.log.debug('API     | Attempting reconnect');
+      this.emitter.emit('attempt_reconnect', this.AirtouchId);
+    }
+  }
 
-  // connect to Airtouch Touchpad Controller socket on tcp port 9004
+  // connect to Airtouch Touchpad Controller socket on tcp port 9005
   connect() {
     this.log.debug('API     | Beginning connection to: ' + this.ip);
     this.device = new net.Socket();
@@ -558,11 +571,14 @@ export class AirtouchAPI {
       this.GET_AC_ABILITY();
 
     });
+    this.lastDataTime = Date.now();
     this.device.on('close', () => {
       this.log.debug('API     | Disconnected from Airtouch');
     });
+    setInterval(this.checkLastDateReceived.bind(this), 10000);
     // listener callback
     this.device.on('data', (data) => {
+      this.lastDataTime = Date.now();
       const real_data = data.slice(10);
       const header = real_data.slice(0, 4);
       const address = real_data.slice(5, 6);

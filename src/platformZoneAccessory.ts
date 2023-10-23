@@ -6,6 +6,7 @@ import { MAGIC } from './magic';
 
 export class AirTouchZoneAccessory {
   private service: Service;
+  private batteryService: Service;
   AirtouchId;
   ZoneNumber;
   minCool: number;
@@ -57,6 +58,16 @@ export class AirTouchZoneAccessory {
     this.service = this.accessory.getService(this.platform.Service.HeaterCooler) ||
                     this.accessory.addService(this.platform.Service.HeaterCooler);
 
+    this.batteryService = this.accessory.getService(this.platform.Service.Battery) ||
+                    this.accessory.addService(this.platform.Service.Battery);
+
+    this.batteryService.getCharacteristic(this.platform.Characteristic.StatusLowBattery)
+      .onGet(this.handleBatteryLowGet.bind(this));
+
+    this.service.setPrimaryService();
+    this.service.addLinkedService(this.batteryService);
+
+
     this.service.getCharacteristic(this.platform.Characteristic.CurrentHeaterCoolerState)
       .onGet(this.handleCurrentHeatingCoolingStateGet.bind(this));
 
@@ -104,6 +115,19 @@ export class AirTouchZoneAccessory {
     this.zone = zone;
     this.ac = ac;
     this.updateAll();
+  }
+
+  handleBatteryLowGet() {
+    const zone_status = this.zone.zone_status!;
+
+    switch(+zone_status.zone_battery_low) {
+      case 0:
+        return this.platform.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
+        break;
+      default:
+        return this.platform.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW;
+        break;
+    }
   }
 
   handleRotationSpeedGet() {
