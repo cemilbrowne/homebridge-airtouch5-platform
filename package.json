@@ -2,7 +2,7 @@
   "private": false,
   "displayName": "AirTouch5",
   "name": "homebridge-airtouch5-platform",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "description": "Provides support for the AirTouch5 zone controller.",
   "license": "Apache-2.0",
   "repository": {
