@@ -409,8 +409,7 @@ export class AirtouchAPI {
       const ac_spill = (unit[3] & 0b00000010) >> 1;
       const ac_timer = (unit[3] & 0b00000001);
       const ac_target = ((parseInt(unit[2]))+100.0) / 10.0;
-      const ac_temp_in = (((unit[4] << 8) + ((unit[5]))) - 500) / 10;
-      const ac_temp = ac_temp_in < 100 ? ac_temp_in : ac_temp_in / 10;
+      const ac_temp = ((((unit[4] & 0b00000111) << 8) + ((unit[5]))) - 500) / 10;
       const ac_error_code = (unit[6] << 8) + (unit[7]);
       const to_push = {
         ac_unit_number: ac_unit_number,
