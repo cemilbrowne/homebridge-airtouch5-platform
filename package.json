@@ -2,7 +2,7 @@
   "private": false,
   "displayName": "AirTouch5",
   "name": "homebridge-airtouch5-platform",
-  "version": "1.8.1",
+  "version": "2.0.0",
   "description": "Provides support for the AirTouch5 zone controller.",
   "license": "Apache-2.0",
   "repository": {
@@ -13,8 +13,8 @@
     "url": "https://github.com/cemilbrowne/homebridge-airtouch5-platform/issues"
   },
   "engines": {
-    "node": ">=14.18.1",
-    "homebridge": ">=1.3.5"
+    "node": "^18.20.4 || ^20.15.1 || ^22",
+    "homebridge": "^1.6.0 || ^2.0.0-beta.0"
   },
   "main": "dist/index.js",
   "scripts": {
@@ -27,11 +27,11 @@
     "homebridge-plugin"
   ],
   "devDependencies": {
-    "@types/node": "^16.10.9",
+    "@types/node": "^18.0.0",
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "@typescript-eslint/parser": "^5.0.0",
     "eslint": "^8.0.1",
-    "homebridge": "^1.3.5",
+    "homebridge": "^2.0.0-beta.16",
     "nodemon": "^2.0.13",
     "rimraf": "^3.0.2",
     "ts-node": "^10.3.0",

@@ -52,7 +52,8 @@ export class MAGIC {
     HIGH: 4,
     POWERFUL: 5,
     TURBO: 6,
-    KEEP: 7,
+    INTELLIGENT: 8,
+    KEEP: 9,
   };
 
   static AC_TARGET_TYPES = {
@@ -70,13 +71,6 @@ export class MAGIC {
     OFF: 2,
     ON: 3,
     TURBO: 5,
-  };
-
-  static ZONE_CONTROL_TYPES = {
-    KEEP: 0,
-    NEXT: 1,
-    DAMPER: 2,
-    TEMPERATURE: 3,
   };
 
   static AC_TARGET_STATES = {

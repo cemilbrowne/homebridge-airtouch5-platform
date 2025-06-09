@@ -1,4 +1,4 @@
-import { Service, PlatformAccessory, Logger } from 'homebridge';
+import { Service, PlatformAccessory, Logger, CharacteristicValue } from 'homebridge';
 
 import { AirtouchPlatform } from './platform';
 
@@ -108,8 +108,9 @@ export class AirTouchACAccessory {
     return 0;
   }
 
-  handleRotationSpeedSet(value) {
-    this.api.acSetFanSpeed(this.ac.ac_number, (value/33)+1);
+  handleRotationSpeedSet(value: CharacteristicValue) {
+    const numValue = Number(value);
+    this.api.acSetFanSpeed(this.ac.ac_number, (numValue/33)+1);
   }
 
   handleActiveGet() {
@@ -133,9 +134,10 @@ export class AirTouchACAccessory {
     }
   }
 
-  handleActiveSet(value) {
+  handleActiveSet(value: CharacteristicValue) {
     this.log.debug('ACACC   | AC Accessory: Setting active to '+value);
-    switch(value) {
+    const numValue = Number(value);
+    switch(numValue) {
       case this.platform.Characteristic.Active.INACTIVE:
         this.api.acSetActive(+this.ac.ac_number, false);
         break;
@@ -284,9 +286,10 @@ export class AirTouchACAccessory {
   /**
    * Handle requests to set the "Target Heater-Cooler State" characteristic
    */
-  handleTargetHeaterCoolerStateSet(value) {
+  handleTargetHeaterCoolerStateSet(value: CharacteristicValue) {
     const ac_number = this.ac.ac_number;
-    switch(value) {
+    const numValue = Number(value);
+    switch(numValue) {
       case this.platform.Characteristic.TargetHeaterCoolerState.COOL:
         this.api.acSetTargetHeatingCoolingState(ac_number, MAGIC.AC_TARGET_STATES.COOL);
         break;
@@ -318,8 +321,9 @@ export class AirTouchACAccessory {
   /**
      * Handle requests to get the current value of the "Current Temperature" characteristic
      */
-  handleTargetTemperatureSet(value) {
-    this.api.acSetTargetTemperature(this.ac.ac_number, value);
+  handleTargetTemperatureSet(value: CharacteristicValue) {
+    const numValue = Number(value);
+    this.api.acSetTargetTemperature(this.ac.ac_number, numValue);
   }
 
 }

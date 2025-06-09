@@ -1,4 +1,4 @@
-import { Service, PlatformAccessory, Logger } from 'homebridge';
+import { Service, PlatformAccessory, Logger, CharacteristicValue } from 'homebridge';
 import { AirtouchPlatform } from './platform';
 import { AC, Zone } from './airTouchWrapper';
 import { AirtouchAPI } from './api';
@@ -135,9 +135,10 @@ export class AirTouchZoneAccessory {
     return zone_status.zone_damper_position;
   }
 
-  handleRotationSpeedSet(value) {
-    this.log.debug('ZONEACC | Zone setting rotation speed to: '+value);
-    this.api.zoneSetPercentage(+this.zone.zone_number, value);
+  handleRotationSpeedSet(value: CharacteristicValue) {
+    const numValue = Number(value);
+    this.log.debug('ZONEACC | Zone setting rotation speed to: '+numValue);
+    this.api.zoneSetPercentage(+this.zone.zone_number, numValue);
   }
 
   handleActiveGet() {
@@ -155,11 +156,12 @@ export class AirTouchZoneAccessory {
     }
   }
 
-  handleActiveSet(value) {
-    this.log.debug('ZONEACC | Zone setting active to: '+value);
+  handleActiveSet(value: CharacteristicValue) {
+    const numValue = Number(value);
+    this.log.debug('ZONEACC | Zone setting active to: '+numValue);
     const zone_power_status = this.zone.zone_status!.zone_power_state;
     if(zone_power_status !== value) {
-      switch(value) {
+      switch(numValue) {
         case this.platform.Characteristic.Active.INACTIVE:
           this.api.zoneSetActive(+this.zone.zone_number, false);
           break;
@@ -295,10 +297,11 @@ export class AirTouchZoneAccessory {
   /**
    * Handle requests to set the "Target Heater-Cooler State" characteristic
    */
-  handleTargetHeatingCoolingStateSet(value) {
-    this.log.debug('ZONEACC | Zone setting target cooling state to to: '+value);
-    this.handleActiveSet(this.platform.Characteristic.Active.Active);
-    switch(value) {
+  handleTargetHeatingCoolingStateSet(value: CharacteristicValue) {
+    const numValue = Number(value);
+    this.log.debug('ZONEACC | Zone setting target cooling state to to: '+numValue);
+    this.handleActiveSet(this.platform.Characteristic.Active.ACTIVE);
+    switch(numValue) {
       case this.platform.Characteristic.TargetHeaterCoolerState.COOL:
         this.api.acSetTargetHeatingCoolingState(this.ac.ac_number, MAGIC.AC_TARGET_STATES.COOL);
         break;
@@ -338,13 +341,13 @@ export class AirTouchZoneAccessory {
   /**
    * Handle requests to get the current value of the "Current Temperature" characteristic
    */
-  handleTargetTemperatureSet(value) {
-    this.log.debug('ZONEACC | Zone setting target temperature to: '+value);
+  handleTargetTemperatureSet(value: CharacteristicValue) {
+    const numValue = Number(value);
     if(+this.zone.zone_status!.zone_has_sensor === 1) {
-      this.api.zoneSetTargetTemperature(+this.zone.zone_number, +value);
+      this.api.zoneSetTargetTemperature(+this.zone.zone_number, +numValue);
     } else {
-      this.api.acSetTargetTemperature(+this.ac.ac_number, +value);
+      this.api.acSetTargetTemperature(+this.ac.ac_number, +numValue);
     }
-    this.log.debug('ZONEACC | Setting target temperature:'+value);
+    this.log.debug('ZONEACC | Setting target temperature:'+numValue);
   }
 }
