@@ -219,6 +219,7 @@ export class Airtouch5Wrapper {
    */
   AddUpdateAcStatus(ac_status: AcStatus) {
     const ac_number = +ac_status.ac_unit_number;
+    this.log.debug('ATWRAP  | Got ac number %d, ac_status %s count of this.acs is %d', ac_number, JSON.stringify(ac_status), this.acs.length);
     const ac_name = this.acs[ac_number].ac_ability.ac_name;
 
     this.log.debug(`ATWRAP  | ${ac_name} details: ${this.getAcStatusSummary(ac_status)}`);
