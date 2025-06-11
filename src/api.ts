@@ -746,7 +746,7 @@ export class AirtouchAPI {
   decode_ac_ability(data: Buffer): void {
     const length = data.length;
     const count_repeats = length/MAGIC.LENGTH_AC_ABILITY;
-
+    this.log.debug('API     | Got an AC Ability message, overall length %d, number of ACs in message %d', length, count_repeats);
     // Process each AC unit's abilities (26 bytes per unit)
     for (let i = 0; i < count_repeats; i++) {
       const unit = data.subarray(i*MAGIC.LENGTH_AC_ABILITY, i*MAGIC.LENGTH_AC_ABILITY+MAGIC.LENGTH_AC_ABILITY);
@@ -1055,7 +1055,7 @@ export class AirtouchAPI {
    * This is typically the first request sent after connection
    */
   GET_AC_ABILITY(): void {
-    const data = Buffer.from([0xff, 0x11, 0x00]);
+    const data = Buffer.from([0xff, 0x11]);
     const message = this.assemble_extended_message(data);
     this.send(message);
   }
