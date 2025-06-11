@@ -13,7 +13,7 @@
     "url": "https://github.com/cemilbrowne/homebridge-airtouch5-platform/issues"
   },
   "engines": {
-    "node": "^18.20.4 || ^20.15.1 || ^22",
+    "node": "^18.13.0 || ^20.15.1 || ^22",
     "homebridge": "^1.6.0 || ^2.0.0-beta.0"
   },
   "main": "dist/index.js",
@@ -31,7 +31,7 @@
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "@typescript-eslint/parser": "^5.0.0",
     "eslint": "^8.0.1",
-    "homebridge": "^2.0.0-beta.16",
+    "homebridge": "^1.6.0",
     "nodemon": "^2.0.13",
     "rimraf": "^3.0.2",
     "ts-node": "^10.3.0",
