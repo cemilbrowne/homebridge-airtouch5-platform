@@ -219,26 +219,29 @@ export class Airtouch5Wrapper {
    */
   AddUpdateAcStatus(ac_status: AcStatus) {
     const ac_number = +ac_status.ac_unit_number;
-    this.log.debug('ATWRAP  | Got ac number %d, ac_status %s count of this.acs is %d', ac_number, JSON.stringify(ac_status), this.acs.length);
+
+
+    const result = this.acs[ac_number];
+    if(result === undefined) {
+      this.log.debug('ATWRAP  | Dont have an AC created yet for status. Disregarding, and asking for a new status update. ', ac_number);
+      this.api.GET_AC_STATUS();
+      return;
+    }
+
     const ac_name = this.acs[ac_number].ac_ability.ac_name;
 
     this.log.debug(`ATWRAP  | ${ac_name} details: ${this.getAcStatusSummary(ac_status)}`);
 
-    const result = this.acs[ac_number];
-    if(result === undefined) {
-      this.log.debug('ATWRAP  | Error condition adding AC Status - no existing AC with abilities with num: ', ac_number);
-      return;
-    } else {
-      result.ac_status = ac_status;
+    result.ac_status = ac_status;
 
-      // Register AC with HomeKit if not already done
-      if(result.registered === false) {
-        this.registerAc(ac_number);
-      }
-
-      // Update the AC accessory with new status
-      this.acs[ac_number].ac_accessory!.updateStatus(this.acs[ac_number], this.zones);
+    // Register AC with HomeKit if not already done
+    if(result.registered === false) {
+      this.registerAc(ac_number);
     }
+
+    // Update the AC accessory with new status
+    this.acs[ac_number].ac_accessory!.updateStatus(this.acs[ac_number], this.zones);
+
   }
 
   /**
